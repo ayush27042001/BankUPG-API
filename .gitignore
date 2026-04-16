@@ -52,3 +52,34 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# User-specific files (IMPORTANT)
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.csproj.user
+
+# Visual Studio cache/options directory
+.vs/
+
+# Publish output
+publish/
+app.publish/
+
+# Secrets & Config
+appsettings.Local.json
+secrets.json
+*.pfx
+*.key
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
