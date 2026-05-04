@@ -1,10 +1,11 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using BankUPG.SharedKernal.Models;
 
-namespace BankUPG.API.Services
+namespace BankUPG.Application.Services.Auth
 {
     public class JwtService
     {
@@ -66,6 +67,22 @@ namespace BankUPG.API.Services
             {
                 return null;
             }
+        }
+
+        public string GenerateRefreshToken()
+        {
+            var randomBytes = new byte[64];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomBytes);
+            return Convert.ToBase64String(randomBytes)
+                .Replace("+", "-")
+                .Replace("/", "_")
+                .Replace("=", "");
+        }
+
+        public DateTime GetRefreshTokenExpiration()
+        {
+            return DateTime.UtcNow.AddDays(_appSettings.Jwt.RefreshTokenExpirationDays);
         }
     }
 }

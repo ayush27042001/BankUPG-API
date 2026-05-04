@@ -1,0 +1,149 @@
+name: BankUPG CI/CD Pipeline
+
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  SOLUTION_PATH: './BankUPG.sln'
+  API_PROJECT_PATH: './BankUPG.API/BankUPG.API.csproj'
+  PUBLISH_PATH: './publish'
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          
+      - name: Restore Dependencies
+        run: dotnet restore ${{ env.SOLUTION_PATH }}
+        
+      - name: Build Solution
+        run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore
+        
+      - name: Run Tests
+        run: dotnet test ${{ env.SOLUTION_PATH }} --configuration Release --no-build --verbosity normal
+        
+      - name: Publish API
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          dotnet publish ${{ env.API_PROJECT_PATH }} \
+            --configuration Release \
+            --output ${{ env.PUBLISH_PATH }} \
+            --self-contained false \
+            -p:PublishSingleFile=false \
+            -p:RuntimeIdentifier=win-x64
+            
+      - name: Upload Build Artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-publish
+          path: ${{ env.PUBLISH_PATH }}
+          retention-days: 1
+
+  deploy:
+    name: Deploy to Production
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: api-publish
+          path: ${{ env.PUBLISH_PATH }}
+          
+      - name: Generate appsettings.Production.json
+        run: |
+          cat > ${{ env.PUBLISH_PATH }}/appsettings.Production.json << 'EOF'
+          {
+            "Logging": {
+              "LogLevel": {
+                "Default": "Information",
+                "Microsoft.AspNetCore": "Warning",
+                "Microsoft.EntityFrameworkCore": "Warning"
+              }
+            },
+            "AllowedHosts": "*",
+            "AppSettings": {
+              "ConnectionString": "${{ secrets.PROD_CONNECTION_STRING }}",
+              "Jwt": {
+                "Secret": "${{ secrets.PROD_JWT_SECRET }}",
+                "Issuer": "BankUPG.API",
+                "Audience": "BankUPG.Client",
+                "ExpirationMinutes": 60
+              },
+              "RateLimit": {
+                "PermitsPerSecond": 10,
+                "BurstLimit": 20,
+                "WindowInSeconds": 60
+              },
+              "Swagger": {
+                "Title": "BankUPG API",
+                "Version": "v1",
+                "Description": "Production-ready BankU Merchant Onboarding API",
+                "ContactName": "BankU Support",
+                "ContactEmail": "support@banku.in"
+              },
+              "Sms": {
+                "ApiUrl": "${{ secrets.SMS_API_URL }}",
+                "Username": "${{ secrets.SMS_USERNAME }}",
+                "ApiKey": "${{ secrets.SMS_API_KEY }}",
+                "Sender": "BANKUI",
+                "Route": "TRANS",
+                "TemplateId": "${{ secrets.SMS_TEMPLATE_ID }}",
+                "Format": "JSON"
+              },
+              "Cashfree": {
+                "ClientId": "${{ secrets.CASHFREE_CLIENT_ID }}",
+                "ClientSecret": "${{ secrets.CASHFREE_CLIENT_SECRET }}",
+                "BaseUrl": "https://api.cashfree.com/"
+              }
+            }
+          }
+          EOF
+          
+      - name: Remove appsettings.Development.json
+        run: rm -f ${{ env.PUBLISH_PATH }}/appsettings.Development.json
+        
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.PLESK_FTP_HOST }}
+          username: ${{ secrets.PLESK_FTP_USERNAME }}
+          password: ${{ secrets.PLESK_FTP_PASSWORD }}
+          local-dir: ${{ env.PUBLISH_PATH }}/
+          server-dir: /httpdocs/
+          protocol: ftp
+          port: 21
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/swagger/**
+            **/*.xml
+            **/*.pdb
+            web.config.bak
+          timeout: 120000
+          
+      - name: Deployment Success Notification
+        run: |
+          echo "✅ Deployment completed successfully!"
+          echo "📅 Deployment Time: $(date)"
+          echo "🔀 Commit: ${{ github.sha }}"
+          echo "👤 Deployed by: ${{ github.actor }}"

@@ -1,0 +1,113 @@
+name: BankUPG Deploy via SSH
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  API_PROJECT_PATH: './BankUPG.API/BankUPG.API.csproj'
+  PUBLISH_PATH: './publish'
+
+jobs:
+  deploy:
+    name: Build & Deploy via SSH
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          
+      - name: Restore & Build
+        run: |
+          dotnet restore ${{ env.API_PROJECT_PATH }}
+          dotnet build ${{ env.API_PROJECT_PATH }} --configuration Release --no-restore
+          
+      - name: Publish
+        run: |
+          dotnet publish ${{ env.API_PROJECT_PATH }} \
+            --configuration Release \
+            --output ${{ env.PUBLISH_PATH }} \
+            --self-contained false
+            
+      - name: Create Production Config
+        run: |
+          cat > ${{ env.PUBLISH_PATH }}/appsettings.Production.json << 'EOF'
+          {
+            "Logging": {
+              "LogLevel": {
+                "Default": "Information",
+                "Microsoft.AspNetCore": "Warning"
+              }
+            },
+            "AllowedHosts": "*",
+            "AppSettings": {
+              "ConnectionString": "${{ secrets.PROD_CONNECTION_STRING }}",
+              "Jwt": {
+                "Secret": "${{ secrets.PROD_JWT_SECRET }}",
+                "Issuer": "BankUPG.API",
+                "Audience": "BankUPG.Client",
+                "ExpirationMinutes": 60
+              },
+              "RateLimit": {
+                "PermitsPerSecond": 10,
+                "BurstLimit": 20,
+                "WindowInSeconds": 60
+              },
+              "Swagger": {
+                "Title": "BankUPG API",
+                "Version": "v1"
+              },
+              "Sms": {
+                "ApiUrl": "${{ secrets.SMS_API_URL }}",
+                "Username": "${{ secrets.SMS_USERNAME }}",
+                "ApiKey": "${{ secrets.SMS_API_KEY }}",
+                "Sender": "BANKUI",
+                "Route": "TRANS",
+                "TemplateId": "${{ secrets.SMS_TEMPLATE_ID }}",
+                "Format": "JSON"
+              },
+              "Cashfree": {
+                "ClientId": "${{ secrets.CASHFREE_CLIENT_ID }}",
+                "ClientSecret": "${{ secrets.CASHFREE_CLIENT_SECRET }}",
+                "BaseUrl": "https://api.cashfree.com/"
+              }
+            }
+          }
+          EOF
+          
+      - name: Remove Development Config
+        run: rm -f ${{ env.PUBLISH_PATH }}/appsettings.Development.json
+        
+      - name: Deploy to Windows Server via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || '22' }}
+          source: "${{ env.PUBLISH_PATH }}/*"
+          target: "${{ secrets.DEPLOY_PATH || '/inetpub/wwwroot/BankUPG' }}"
+          strip_components: 1
+          overwrite: true
+          rm: false
+          
+      - name: Restart IIS Application Pool
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || '22' }}
+          script: |
+            echo "Restarting application pool..."
+            Import-Module WebAdministration
+            Restart-WebAppPool -Name "BankUPG"
+            Write-Output "Application pool restarted successfully"

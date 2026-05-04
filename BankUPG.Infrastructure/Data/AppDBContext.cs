@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using BankUPG.Infrastructure.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace BankUPG.Infrastructure.Data;
 
@@ -58,12 +59,38 @@ public partial class AppDBContext : DbContext
 
     public virtual DbSet<WebsiteAppDetail> WebsiteAppDetails { get; set; }
 
+    public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Data Source=103.205.142.34,1433;Initial Catalog=BankuPG;Persist Security Info=True;User ID=sa;Password=zUG93NOh6WE7BQIS;TrustServerCertificate=True");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Configure DateTime to use IST timezone
+        var dateTimeConverter = new ValueConverter<DateTime, DateTime>(
+            v => DateTimeService.IstToUtc(v),
+            v => DateTimeService.UtcToIst(v));
+
+        var nullableDateTimeConverter = new ValueConverter<DateTime?, DateTime?>(
+            v => v.HasValue ? DateTimeService.IstToUtc(v.Value) : null,
+            v => v.HasValue ? DateTimeService.UtcToIst(v.Value) : null);
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(DateTime))
+                {
+                    property.SetValueConverter(dateTimeConverter);
+                }
+                else if (property.ClrType == typeof(DateTime?))
+                {
+                    property.SetValueConverter(nullableDateTimeConverter);
+                }
+            }
+        }
+
         modelBuilder.Entity<BankAccountDetail>(entity =>
         {
             entity.HasKey(e => e.BankAccountDetailId).HasName("PK__BankAcco__263E0BB007C364C2");
@@ -739,6 +766,34 @@ public partial class AppDBContext : DbContext
             entity.HasOne(d => d.MidNavigation).WithOne(p => p.WebsiteAppDetail)
                 .HasForeignKey<WebsiteAppDetail>(d => d.Mid)
                 .HasConstraintName("FK_WebsiteAppDetails_Merchants");
+        });
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(e => e.RefreshTokenId).HasName("PK__RefreshT__F5835E3977E9E1C0");
+
+            entity.ToTable("RefreshTokens");
+
+            entity.HasIndex(e => e.Token, "UQ__RefreshT__1EB4F817BF4C21A2").IsUnique();
+
+            entity.HasIndex(e => e.UserId, "IX_RefreshTokens_UserId");
+
+            entity.Property(e => e.RefreshTokenId).HasColumnName("RefreshTokenID");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.ExpiresAt).HasColumnType("datetime");
+            entity.Property(e => e.IpAddress).HasMaxLength(50);
+            entity.Property(e => e.ReplacedByToken).HasMaxLength(500);
+            entity.Property(e => e.RevokedAt).HasColumnType("datetime");
+            entity.Property(e => e.Token).HasMaxLength(500);
+            entity.Property(e => e.UserAgent).HasMaxLength(500);
+            entity.Property(e => e.UserId).HasColumnName("UserID");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_RefreshTokens_Users");
         });
 
         OnModelCreatingPartial(modelBuilder);
