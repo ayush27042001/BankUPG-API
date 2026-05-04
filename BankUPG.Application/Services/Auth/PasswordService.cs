@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace BankUPG.API.Services
+namespace BankUPG.Application.Services.Auth
 {
     public class PasswordService
     {

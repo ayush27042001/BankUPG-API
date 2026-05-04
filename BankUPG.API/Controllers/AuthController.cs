@@ -1,8 +1,10 @@
 using BankUPG.Infrastructure.Data;
 using BankUPG.Infrastructure.Entities;
-using BankUPG.API.Services;
+using BankUPG.Application.Services.Auth;
+using BankUPG.Application.Interfaces.Cache;
 using BankUPG.SharedKernal.Requests;
 using BankUPG.SharedKernal.Responses;
+using BankUPG.SharedKernal.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -18,19 +20,22 @@ namespace BankUPG.API.Controllers
         private readonly PasswordService _passwordService;
         private readonly OtpService _otpService;
         private readonly ILogger<AuthController> _logger;
+        private readonly AppSettings _appSettings;
 
         public AuthController(
             AppDBContext context,
             JwtService jwtService,
             PasswordService passwordService,
             OtpService otpService,
-            ILogger<AuthController> logger)
+            ILogger<AuthController> logger,
+            AppSettings appSettings)
         {
             _context = context;
             _jwtService = jwtService;
             _passwordService = passwordService;
             _otpService = otpService;
             _logger = logger;
+            _appSettings = appSettings;
         }
 
         [HttpPost("login")]
@@ -97,8 +102,10 @@ namespace BankUPG.API.Controllers
                 user.LastLoginDate = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
-                // Log successful login
-                var merchant = user.Merchants.FirstOrDefault();
+                // Get merchant with onboarding status
+                var merchant = await _context.Merchants
+                    .Include(m => m.OnboardingStatus)
+                    .FirstOrDefaultAsync(m => m.UserId == user.UserId);
                 var mid = merchant?.Mid;
                 await LogLoginAttempt(user.UserId, mid, true, GetClientIpAddress());
 
@@ -110,15 +117,42 @@ namespace BankUPG.API.Controllers
                     user.UserId
                 );
 
+                // Generate refresh token
+                var refreshToken = _jwtService.GenerateRefreshToken();
+                var refreshTokenExpiration = _jwtService.GetRefreshTokenExpiration();
+
+                // Save refresh token to database
+                _context.RefreshTokens.Add(new RefreshToken
+                {
+                    UserId = user.UserId,
+                    Token = refreshToken,
+                    ExpiresAt = refreshTokenExpiration,
+                    IpAddress = GetClientIpAddress(),
+                    UserAgent = Request.Headers["User-Agent"].ToString()
+                });
+                await _context.SaveChangesAsync();
+
+                // Build onboarding status for response
+                var onboardingStatusId = merchant?.OnboardingStatusId ?? 1;
+                var (currentStepName, formStep, step) = GetOnboardingStepInfo(onboardingStatusId);
+                var onboardingStatus = BuildOnboardingStatus(onboardingStatusId);
+
                 var response = new LoginResponse
                 {
                     Token = token,
-                    Expiration = DateTime.UtcNow.AddMinutes(60),
+                    Expiration = DateTime.UtcNow.AddMinutes(_appSettings.Jwt.ExpirationMinutes),
                     Email = user.Email,
                     MobileNumber = user.MobileNumber,
                     IsMobileVerified = user.IsMobileVerified ?? false,
                     FirstName = user.Email, // Using email as first name for now
-                    LastName = string.Empty
+                    LastName = string.Empty,
+                    RefreshToken = refreshToken,
+                    RefreshTokenExpiration = refreshTokenExpiration,
+                    OnboardingStatusId = step, // 0-based step number
+                    CurrentStepName = currentStepName,
+                    FormStep = formStep,
+                    Step = step,
+                    OnboardingStatus = onboardingStatus
                 };
 
                 return Ok(new ApiResponse<LoginResponse>
@@ -285,6 +319,94 @@ namespace BankUPG.API.Controllers
             }
         }
 
+        [HttpPost("refresh-token")]
+        [ProducesResponseType(typeof(ApiResponse<RefreshTokenResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<ApiResponse<RefreshTokenResponse>>> RefreshToken([FromBody] RefreshTokenRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(request.RefreshToken))
+                {
+                    return BadRequest(new ApiResponse<RefreshTokenResponse>
+                    {
+                        Success = false,
+                        Message = "Refresh token is required"
+                    });
+                }
+
+                // Find the refresh token in database
+                var existingToken = await _context.RefreshTokens
+                    .Include(r => r.User)
+                    .FirstOrDefaultAsync(r => r.Token == request.RefreshToken);
+
+                if (existingToken == null || !existingToken.IsActive)
+                {
+                    return Unauthorized(new ApiResponse<RefreshTokenResponse>
+                    {
+                        Success = false,
+                        Message = "Invalid or expired refresh token"
+                    });
+                }
+
+                var user = existingToken.User;
+
+                // Revoke the old refresh token
+                existingToken.IsRevoked = true;
+                existingToken.RevokedAt = DateTime.UtcNow;
+
+                // Generate new tokens
+                var newToken = _jwtService.GenerateToken(
+                    user.Email,
+                    user.Email,
+                    string.Empty,
+                    user.UserId
+                );
+
+                var newRefreshToken = _jwtService.GenerateRefreshToken();
+                var newRefreshTokenExpiration = _jwtService.GetRefreshTokenExpiration();
+
+                // Save new refresh token
+                _context.RefreshTokens.Add(new RefreshToken
+                {
+                    UserId = user.UserId,
+                    Token = newRefreshToken,
+                    ExpiresAt = newRefreshTokenExpiration,
+                    ReplacedByToken = newRefreshToken,
+                    IpAddress = GetClientIpAddress(),
+                    UserAgent = Request.Headers["User-Agent"].ToString()
+                });
+
+                await _context.SaveChangesAsync();
+
+                var response = new RefreshTokenResponse
+                {
+                    Token = newToken,
+                    Expiration = DateTime.UtcNow.AddMinutes(_appSettings.Jwt.ExpirationMinutes),
+                    RefreshToken = newRefreshToken,
+                    RefreshTokenExpiration = newRefreshTokenExpiration,
+                    Email = user.Email
+                };
+
+                return Ok(new ApiResponse<RefreshTokenResponse>
+                {
+                    Success = true,
+                    Message = "Token refreshed successfully",
+                    Data = response
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error refreshing token");
+                return StatusCode(500, new ApiResponse<RefreshTokenResponse>
+                {
+                    Success = false,
+                    Message = "An error occurred while refreshing token"
+                });
+            }
+        }
+
         private async Task LogLoginAttempt(int userId, int? mid, bool success, string? ipAddress)
         {
             var auditLog = new LoginAuditLog
@@ -315,6 +437,53 @@ namespace BankUPG.API.Controllers
             }
 
             return ipAddress;
+        }
+
+        private static (string stepName, string formStep, int step) GetOnboardingStepInfo(int onboardingStatusId)
+        {
+            return onboardingStatusId switch
+            {
+                1 => ("Account Creation", "SignupCompleteBusinessPANNeedcomplete", 0),
+                2 => ("PAN Verification", "BusinessPANCompletedBusinessEntityPending", 1),
+                3 => ("Business Entity", "BusinessEntityCompletedPhoneCKYCPending", 2),
+                4 => ("Phone CKYC", "PhoneCKYCCompletedBusinessCategoryPending", 3),
+                5 => ("Business Category", "BusinessCategoryCompletedShareDetailsPending", 4),
+                6 => ("Share Business Details", "ShareDetailsCompletedConnectPlatformPending", 5),
+                7 => ("Connect Platform", "ConnectPlatformCompletedUploadDocsPending", 6),
+                8 => ("Upload Documents", "UploadDocsCompletedServiceAgreementPending", 7),
+                9 => ("Service Agreement", "ServiceAgreementCompleted", 8),
+                10 => ("Completed", "RegistrationCompleted", 9),
+                _ => ("Account Creation", "SignupCompleteBusinessPANNeedcomplete", 0)
+            };
+        }
+
+        private static OnboardingStatusDto BuildOnboardingStatus(int currentStatusId)
+        {
+            var steps = new List<OnboardingStepDto>
+            {
+                new() { StepNumber = 0, StepName = "Account Creation", StepKey = "ACCOUNT_CREATION", IsCompleted = currentStatusId > 1, IsActive = currentStatusId == 1 },
+                new() { StepNumber = 1, StepName = "PAN Verification", StepKey = "PAN_VERIFICATION", IsCompleted = currentStatusId > 2, IsActive = currentStatusId == 2 },
+                new() { StepNumber = 2, StepName = "Business Entity", StepKey = "BUSINESS_ENTITY", IsCompleted = currentStatusId > 3, IsActive = currentStatusId == 3 },
+                new() { StepNumber = 3, StepName = "Phone CKYC", StepKey = "PHONE_CKYC", IsCompleted = currentStatusId > 4, IsActive = currentStatusId == 4 },
+                new() { StepNumber = 4, StepName = "Business Category", StepKey = "BUSINESS_CATEGORY", IsCompleted = currentStatusId > 5, IsActive = currentStatusId == 5 },
+                new() { StepNumber = 5, StepName = "Share Business Details", StepKey = "SHARE_BUSINESS_DETAILS", IsCompleted = currentStatusId > 6, IsActive = currentStatusId == 6 },
+                new() { StepNumber = 6, StepName = "Connect Platform", StepKey = "CONNECT_PLATFORM", IsCompleted = currentStatusId > 7, IsActive = currentStatusId == 7 },
+                new() { StepNumber = 7, StepName = "Upload Documents", StepKey = "UPLOAD_DOCUMENTS", IsCompleted = currentStatusId > 8, IsActive = currentStatusId == 8 },
+                new() { StepNumber = 8, StepName = "Service Agreement", StepKey = "SERVICE_AGREEMENT", IsCompleted = currentStatusId > 9, IsActive = currentStatusId == 9 }
+            };
+
+            // Get current step info (0-based for display)
+            var currentStepIndex = Math.Max(0, currentStatusId - 1);
+            var currentStep = steps.FirstOrDefault(s => s.StepNumber == currentStepIndex);
+            var stepName = currentStep?.StepName ?? "Account Creation";
+
+            return new OnboardingStatusDto
+            {
+                StepNumber = currentStepIndex,
+                StepName = stepName,
+                IsCompleted = currentStatusId >= 10,
+                Steps = steps
+            };
         }
     }
 }

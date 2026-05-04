@@ -7,6 +7,7 @@ namespace BankUPG.SharedKernal.Models
         public RateLimitSettings RateLimit { get; set; }
         public SwaggerSettings Swagger { get; set; }
         public SmsSettings Sms { get; set; }
+        public CashfreeSettings Cashfree { get; set; }
     }
 
     public class JwtSettings
@@ -15,6 +16,7 @@ namespace BankUPG.SharedKernal.Models
         public string Issuer { get; set; }
         public string Audience { get; set; }
         public int ExpirationMinutes { get; set; }
+        public int RefreshTokenExpirationDays { get; set; } = 7;
     }
 
     public class RateLimitSettings
@@ -42,5 +44,12 @@ namespace BankUPG.SharedKernal.Models
         public string Route { get; set; }
         public string TemplateId { get; set; }
         public string Format { get; set; }
+    }
+
+    public class CashfreeSettings
+    {
+        public string ClientId { get; set; }
+        public string ClientSecret { get; set; }
+        public string BaseUrl { get; set; }
     }
 }
