@@ -15,6 +15,7 @@ namespace BankUPG.API.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
+        //test cicd
         private readonly AppDBContext _context;
         private readonly JwtService _jwtService;
         private readonly PasswordService _passwordService;
