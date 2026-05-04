@@ -128,7 +128,7 @@ jobs:
           username: ${{ secrets.PLESK_FTP_USERNAME }}
           password: ${{ secrets.PLESK_FTP_PASSWORD }}
           local-dir: ${{ env.PUBLISH_PATH }}/
-          server-dir: /httpdocs/
+          server-dir: /
           protocol: ftp
           port: 21
           exclude: |
