@@ -351,6 +351,28 @@ namespace BankUPG.API.Controllers
                     });
                 }
 
+                // If expired access token is provided, validate it matches the refresh token user
+                if (!string.IsNullOrEmpty(request.ExpiredToken))
+                {
+                    var principal = _jwtService.ValidateExpiredToken(request.ExpiredToken);
+                    if (principal != null)
+                    {
+                        var userIdClaim = principal.FindAll(ClaimTypes.NameIdentifier)
+                            .FirstOrDefault(c => int.TryParse(c.Value, out _));
+                        if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int tokenUserId))
+                        {
+                            if (tokenUserId != existingToken.UserId)
+                            {
+                                return Unauthorized(new ApiResponse<RefreshTokenResponse>
+                                {
+                                    Success = false,
+                                    Message = "Token mismatch"
+                                });
+                            }
+                        }
+                    }
+                }
+
                 var user = existingToken.User;
 
                 // Revoke the old refresh token

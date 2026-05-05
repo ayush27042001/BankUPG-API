@@ -266,8 +266,10 @@ namespace BankUPG.API.Controllers
                     });
                 }
 
-                // Extract userId from JWT token
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+                // Extract userId from JWT token - find the numeric nameidentifier claim
+                // (external auth adds email as nameidentifier, we need the numeric user ID)
+                var userIdClaim = User.FindAll(ClaimTypes.NameIdentifier)
+                    .FirstOrDefault(c => int.TryParse(c.Value, out _));
                 if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
                 {
                     return Unauthorized(new ApiResponse<RegistrationCompletedResponse>
@@ -336,8 +338,10 @@ namespace BankUPG.API.Controllers
         {
             try
             {
-                // Extract userId from JWT token
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+                // Extract userId from JWT token - find the numeric nameidentifier claim
+                // (external auth adds email as nameidentifier, we need the numeric user ID)
+                var userIdClaim = User.FindAll(ClaimTypes.NameIdentifier)
+                    .FirstOrDefault(c => int.TryParse(c.Value, out _));
                 if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
                 {
                     return Unauthorized(new ApiResponse<PanDetailsResponse>

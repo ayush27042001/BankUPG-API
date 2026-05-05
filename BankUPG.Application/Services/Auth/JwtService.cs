@@ -69,6 +69,33 @@ namespace BankUPG.Application.Services.Auth
             }
         }
 
+        public ClaimsPrincipal? ValidateExpiredToken(string token)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.UTF8.GetBytes(_appSettings.Jwt.Secret);
+
+            try
+            {
+                var principal = tokenHandler.ValidateToken(token, new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = true,
+                    ValidIssuer = _appSettings.Jwt.Issuer,
+                    ValidateAudience = true,
+                    ValidAudience = _appSettings.Jwt.Audience,
+                    ValidateLifetime = false, // Don't validate expiration - allows expired tokens
+                    ClockSkew = TimeSpan.Zero
+                }, out _);
+
+                return principal;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public string GenerateRefreshToken()
         {
             var randomBytes = new byte[64];
