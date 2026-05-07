@@ -121,6 +121,19 @@ jobs:
       - name: Remove appsettings.Development.json
         run: rm -f ${{ env.PUBLISH_PATH }}/appsettings.Development.json
         
+      - name: Stop IIS Application Pool
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || '22' }}
+          script: |
+            echo "Stopping application pool..."
+            Import-Module WebAdministration
+            Stop-WebAppPool -Name "BankUPG"
+            Write-Output "Application pool stopped successfully"
+            
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -141,6 +154,19 @@ jobs:
             web.config.bak
           timeout: 120000
           
+      - name: Start IIS Application Pool
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || '22' }}
+          script: |
+            echo "Starting application pool..."
+            Import-Module WebAdministration
+            Start-WebAppPool -Name "BankUPG"
+            Write-Output "Application pool started successfully"
+            
       - name: Deployment Success Notification
         run: |
           echo "✅ Deployment completed successfully!"
