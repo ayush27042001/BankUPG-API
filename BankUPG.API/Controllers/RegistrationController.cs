@@ -488,7 +488,7 @@ namespace BankUPG.API.Controllers
                     isAlreadyRegistered = await _context.BusinessPandetails
                     .AsNoTracking()
                     .AnyAsync(p => p.PancardNumber == panNumber && p.Mid!= merchant.Mid);
-                x}
+                }
 
                 return Ok(new ApiResponse<PanValidationResult>
                 {
