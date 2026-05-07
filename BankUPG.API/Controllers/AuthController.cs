@@ -133,10 +133,9 @@ namespace BankUPG.API.Controllers
                 });
                 await _context.SaveChangesAsync();
 
-                // Build onboarding status for response
-                var onboardingStatusId = merchant?.OnboardingStatusId ?? 1;
-                var (currentStepName, formStep, step) = GetOnboardingStepInfo(onboardingStatusId);
-                var onboardingStatus = BuildOnboardingStatus(onboardingStatusId);
+                // Build onboarding status for response from OnboardingStepTracking table
+                var (currentStepName, formStep, step) = await GetOnboardingStepInfoAsync(mid ?? 0);
+                var onboardingStatus = await BuildOnboardingStatusAsync(mid ?? 0);
 
                 var response = new LoginResponse
                 {
@@ -283,6 +282,11 @@ namespace BankUPG.API.Controllers
                 user.IsMobileVerified = true;
                 await _context.SaveChangesAsync();
 
+                // Get merchant for onboarding status
+                var merchant = await _context.Merchants
+                    .FirstOrDefaultAsync(m => m.UserId == user.UserId);
+                var mid = merchant?.Mid;
+
                 // Generate JWT token
                 var token = _jwtService.GenerateToken(
                     user.Email,
@@ -291,15 +295,24 @@ namespace BankUPG.API.Controllers
                     user.UserId
                 );
 
+                // Build onboarding status for response from OnboardingStepTracking table
+                var (currentStepName, formStep, step) = await GetOnboardingStepInfoAsync(mid ?? 0);
+                var onboardingStatus = await BuildOnboardingStatusAsync(mid ?? 0);
+
                 var response = new LoginResponse
                 {
                     Token = token,
-                    Expiration = DateTime.UtcNow.AddMinutes(60),
+                    Expiration = DateTime.UtcNow.AddMinutes(_appSettings.Jwt.ExpirationMinutes),
                     Email = user.Email,
                     MobileNumber = user.MobileNumber,
                     IsMobileVerified = true,
                     FirstName = user.Email,
-                    LastName = string.Empty
+                    LastName = string.Empty,
+                    OnboardingStatusId = step,
+                    CurrentStepName = currentStepName,
+                    FormStep = formStep,
+                    Step = step,
+                    OnboardingStatus = onboardingStatus
                 };
 
                 return Ok(new ApiResponse<LoginResponse>
@@ -462,49 +475,135 @@ namespace BankUPG.API.Controllers
             return ipAddress;
         }
 
-        private static (string stepName, string formStep, int step) GetOnboardingStepInfo(int onboardingStatusId)
+        private async Task<(string stepName, string formStep, int step)> GetOnboardingStepInfoAsync(int mid)
         {
-            return onboardingStatusId switch
+            // Define the order of onboarding steps
+            var stepOrder = new[]
             {
-                1 => ("Account Creation", "SignupCompleteBusinessPANNeedcomplete", 0),
-                2 => ("PAN Verification", "BusinessPANCompletedBusinessEntityPending", 1),
-                3 => ("Business Entity", "BusinessEntityCompletedPhoneCKYCPending", 2),
-                4 => ("Phone CKYC", "PhoneCKYCCompletedBusinessCategoryPending", 3),
-                5 => ("Business Category", "BusinessCategoryCompletedShareDetailsPending", 4),
-                6 => ("Share Business Details", "ShareDetailsCompletedConnectPlatformPending", 5),
-                7 => ("Connect Platform", "ConnectPlatformCompletedUploadDocsPending", 6),
-                8 => ("Upload Documents", "UploadDocsCompletedServiceAgreementPending", 7),
-                9 => ("Service Agreement", "ServiceAgreementCompleted", 8),
-                10 => ("Completed", "RegistrationCompleted", 9),
-                _ => ("Account Creation", "SignupCompleteBusinessPANNeedcomplete", 0)
+                
+                "PAN Verification",
+                "Business Entity",
+                "Phone CKYC",
+                "Business Category",
+                "Share Business Details",
+                "Connect Platform",
+                "Upload Documents",
+                "Service Agreement"
             };
+
+            // Get completed steps from OnboardingStepTracking table
+            var completedSteps = await _context.OnboardingStepTrackings
+                .Where(s => s.Mid == mid && s.StepStatus == "COMPLETED")
+                .Select(s => s.StepName)
+                .ToListAsync();
+
+            // Find the first incomplete step (current step)
+            string currentStepName = "Account Creation";
+            int stepIndex = 0;
+
+            if (completedSteps.Count == 0)
+            {
+                stepIndex = 0;
+            }
+            else
+            {
+                bool foundIncomplete = false;
+                foreach (var step in stepOrder)
+                {
+                    if (!completedSteps.Contains(step))
+                    {
+                        currentStepName = step;
+                        foundIncomplete = true;
+                        break;
+                    }
+                    stepIndex++;
+                }
+                // If all steps completed
+                if (!foundIncomplete)
+                {
+                    currentStepName = "Completed";
+                    stepIndex = 9;
+                }
+            }
+
+            // Map step to form step string
+            string formStep = currentStepName switch
+            {
+                
+                "PAN Verification" => "BusinessPANCompletedBusinessEntityPending",
+                "Business Entity" => "BusinessEntityCompletedPhoneCKYCPending",
+                "Phone CKYC" => "PhoneCKYCCompletedBusinessCategoryPending",
+                "Business Category" => "BusinessCategoryCompletedShareDetailsPending",
+                "Share Business Details" => "ShareDetailsCompletedConnectPlatformPending",
+                "Connect Platform" => "ConnectPlatformCompletedUploadDocsPending",
+                "Upload Documents" => "UploadDocsCompletedServiceAgreementPending",
+                "Service Agreement" => "ServiceAgreementCompleted",
+                "Completed" => "RegistrationCompleted",
+                _ => "SignupCompleteBusinessPANNeedcomplete"
+            };
+
+            return (currentStepName, formStep, stepIndex);
         }
 
-        private static OnboardingStatusDto BuildOnboardingStatus(int currentStatusId)
+        private async Task<OnboardingStatusDto> BuildOnboardingStatusAsync(int mid)
         {
-            var steps = new List<OnboardingStepDto>
+            // Define the order of onboarding steps
+            var stepOrder = new[]
             {
-                new() { StepNumber = 0, StepName = "Account Creation", StepKey = "ACCOUNT_CREATION", IsCompleted = currentStatusId > 1, IsActive = currentStatusId == 1 },
-                new() { StepNumber = 1, StepName = "PAN Verification", StepKey = "PAN_VERIFICATION", IsCompleted = currentStatusId > 2, IsActive = currentStatusId == 2 },
-                new() { StepNumber = 2, StepName = "Business Entity", StepKey = "BUSINESS_ENTITY", IsCompleted = currentStatusId > 3, IsActive = currentStatusId == 3 },
-                new() { StepNumber = 3, StepName = "Phone CKYC", StepKey = "PHONE_CKYC", IsCompleted = currentStatusId > 4, IsActive = currentStatusId == 4 },
-                new() { StepNumber = 4, StepName = "Business Category", StepKey = "BUSINESS_CATEGORY", IsCompleted = currentStatusId > 5, IsActive = currentStatusId == 5 },
-                new() { StepNumber = 5, StepName = "Share Business Details", StepKey = "SHARE_BUSINESS_DETAILS", IsCompleted = currentStatusId > 6, IsActive = currentStatusId == 6 },
-                new() { StepNumber = 6, StepName = "Connect Platform", StepKey = "CONNECT_PLATFORM", IsCompleted = currentStatusId > 7, IsActive = currentStatusId == 7 },
-                new() { StepNumber = 7, StepName = "Upload Documents", StepKey = "UPLOAD_DOCUMENTS", IsCompleted = currentStatusId > 8, IsActive = currentStatusId == 8 },
-                new() { StepNumber = 8, StepName = "Service Agreement", StepKey = "SERVICE_AGREEMENT", IsCompleted = currentStatusId > 9, IsActive = currentStatusId == 9 }
+               
+                new { StepNumber = 1, StepName = "PAN Verification", StepKey = "PAN_VERIFICATION" },
+                new { StepNumber = 2, StepName = "Business Entity", StepKey = "BUSINESS_ENTITY" },
+                new { StepNumber = 3, StepName = "Phone CKYC", StepKey = "PHONE_CKYC" },
+                new { StepNumber = 4, StepName = "Business Category", StepKey = "BUSINESS_CATEGORY" },
+                new { StepNumber = 5, StepName = "Share Business Details", StepKey = "SHARE_BUSINESS_DETAILS" },
+                new { StepNumber = 6, StepName = "Connect Platform", StepKey = "CONNECT_PLATFORM" },
+                new { StepNumber = 7, StepName = "Upload Documents", StepKey = "UPLOAD_DOCUMENTS" },
+                new { StepNumber = 8, StepName = "Service Agreement", StepKey = "SERVICE_AGREEMENT" }
             };
 
-            // Get current step info (0-based for display)
-            var currentStepIndex = Math.Max(0, currentStatusId - 1);
-            var currentStep = steps.FirstOrDefault(s => s.StepNumber == currentStepIndex);
-            var stepName = currentStep?.StepName ?? "Account Creation";
+            // Get completed steps from OnboardingStepTracking table
+            var completedSteps = await _context.OnboardingStepTrackings
+                .Where(s => s.Mid == mid && s.StepStatus == "COMPLETED")
+                .Select(s => s.StepName)
+                .ToListAsync();
+
+            // Find the current (first incomplete) step
+            int currentStepIndex = 0;
+            string currentStepName = "Account Creation";
+            bool allCompleted = true;
+
+            foreach (var step in stepOrder)
+            {
+                if (!completedSteps.Contains(step.StepName))
+                {
+                    currentStepIndex = step.StepNumber;
+                    currentStepName = step.StepName;
+                    allCompleted = false;
+                    break;
+                }
+            }
+
+            if (allCompleted)
+            {
+                currentStepIndex = 9;
+                currentStepName = "Completed";
+            }
+
+            // Build steps list with completion status
+            var steps = stepOrder.Select(step => new OnboardingStepDto
+            {
+                StepNumber = step.StepNumber,
+                StepName = step.StepName,
+                StepKey = step.StepKey,
+                IsCompleted = completedSteps.Contains(step.StepName),
+                IsActive = step.StepName == currentStepName
+            }).ToList();
 
             return new OnboardingStatusDto
             {
                 StepNumber = currentStepIndex,
-                StepName = stepName,
-                IsCompleted = currentStatusId >= 10,
+                StepName = currentStepName,
+                IsCompleted = allCompleted,
                 Steps = steps
             };
         }
