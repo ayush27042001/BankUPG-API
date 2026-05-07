@@ -45,19 +45,22 @@ namespace BankUPG.Application.Services.PhoneCkyc
             if (string.IsNullOrEmpty(mobileNumber))
                 throw new InvalidOperationException("Mobile number not found for user.");
 
-            var otpResult = await _otpService.GenerateAndSendOtpAsync(
+            await _otpService.GenerateOtpAsync(
                 mobileNumber,
-                merchant.Mid,
+                "PHONE_CKYC",
                 userId,
-                "PHONE_CKYC"
+                merchant.Mid
             );
+
+            var remainingSeconds = await _otpService.GetRemainingTimeAsync(mobileNumber);
 
             _logger.LogInformation("OTP sent for Phone CKYC to userId: {UserId}, mobile: {Mobile}", userId, mobileNumber);
 
             return new OtpResponse
             {
-                OtpExpirySeconds = otpResult.OtpExpirySeconds,
-                Message = "OTP sent successfully to your registered mobile number"
+                Success = true,
+                Message = "OTP sent successfully to your registered mobile number",
+                RemainingSeconds = remainingSeconds
             };
         }
 
@@ -74,18 +77,16 @@ namespace BankUPG.Application.Services.PhoneCkyc
             if (string.IsNullOrEmpty(mobileNumber))
                 throw new InvalidOperationException("Mobile number not found for user.");
 
-            var verificationResult = await _otpService.VerifyOtpAsync(
-                mobileNumber,
-                otp,
-                merchant.Mid,
-                userId,
-                "PHONE_CKYC"
-            );
+            var isVerified = await _otpService.VerifyOtpAsync(mobileNumber, otp);
 
-            _logger.LogInformation("OTP verification for Phone CKYC: {Result} for userId: {UserId}", 
-                verificationResult.IsVerified ? "Success" : "Failed", userId);
+            _logger.LogInformation("OTP verification for Phone CKYC: {Result} for userId: {UserId}",
+                isVerified ? "Success" : "Failed", userId);
 
-            return verificationResult;
+            return new OtpVerificationResponse
+            {
+                IsVerified = isVerified,
+                Message = isVerified ? "OTP verified successfully" : "Invalid OTP or OTP expired"
+            };
         }
 
         public async Task<PhoneCkycResponse?> GetPhoneCkycAsync(int userId)

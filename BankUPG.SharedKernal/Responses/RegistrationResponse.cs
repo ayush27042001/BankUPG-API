@@ -135,6 +135,8 @@ namespace BankUPG.SharedKernal.Responses
         public string? CkycIdentifier { get; set; }
         public bool ConsentGiven { get; set; }
         public DateTime? ConsentDate { get; set; }
+        public string Token { get; set; } = string.Empty;
+        public DateTime TokenExpiration { get; set; }
         public string Message { get; set; } = string.Empty;
         public string? FormStep { get; set; }
         public int? Step { get; set; }

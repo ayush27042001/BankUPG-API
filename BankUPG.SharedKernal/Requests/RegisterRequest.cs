@@ -122,14 +122,6 @@ namespace BankUPG.SharedKernal.Requests
         public bool ConsentGiven { get; set; }
     }
 
-    public class VerifyOtpRequest
-    {
-        [Required(ErrorMessage = "OTP is required")]
-        [StringLength(6, MinimumLength = 6, ErrorMessage = "OTP must be 6 digits")]
-        [RegularExpression(@"^\d{6}$", ErrorMessage = "OTP must be 6 digits")]
-        public string Otp { get; set; } = string.Empty;
-    }
-
     public class SaveBusinessCategoryRequest
     {
         [Required(ErrorMessage = "Business category is required")]
