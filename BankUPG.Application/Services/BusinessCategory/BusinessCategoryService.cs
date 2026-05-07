@@ -13,19 +13,13 @@ namespace BankUPG.Application.Services.BusinessCategory
     public class BusinessCategoryService : IBusinessCategoryService
     {
         private readonly AppDBContext _context;
-        private readonly JwtService _jwtService;
-        private readonly AppSettings _appSettings;
         private readonly ILogger<BusinessCategoryService> _logger;
 
         public BusinessCategoryService(
             AppDBContext context,
-            JwtService jwtService,
-            AppSettings appSettings,
             ILogger<BusinessCategoryService> logger)
         {
             _context = context;
-            _jwtService = jwtService;
-            _appSettings = appSettings;
             _logger = logger;
         }
 
@@ -141,13 +135,6 @@ namespace BankUPG.Application.Services.BusinessCategory
             var (currentStepName, formStep, step) = await GetOnboardingStepInfoAsync(mid);
             var onboardingStatus = await BuildOnboardingStatusAsync(mid);
 
-            var token = _jwtService.GenerateToken(
-                merchant.User.Email,
-                merchant.User.Email,
-                string.Empty,
-                merchant.User.UserId
-            );
-
             _logger.LogInformation("Business category {Operation} for userId: {UserId}, mid: {Mid}, categoryId: {CategoryId}, subCategoryId: {SubCategoryId}",
                 isUpdate ? "updated" : "saved", userId, mid, request.BusinessCategoryId, request.BusinessSubCategoryId);
 
@@ -158,8 +145,6 @@ namespace BankUPG.Application.Services.BusinessCategory
                 CategoryName = category.CategoryName,
                 BusinessSubCategoryId = request.BusinessSubCategoryId,
                 SubCategoryName = subCategory.SubCategoryName,
-                Token = token,
-                TokenExpiration = DateTime.UtcNow.AddMinutes(_appSettings.Jwt.ExpirationMinutes),
                 Message = isUpdate ? "Business category updated successfully" : "Business category saved successfully",
                 FormStep = formStep,
                 Step = step,

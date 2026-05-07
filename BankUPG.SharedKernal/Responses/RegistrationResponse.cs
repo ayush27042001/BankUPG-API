@@ -13,8 +13,6 @@ namespace BankUPG.SharedKernal.Responses
         public int UserId { get; set; }
         public int Mid { get; set; }
         public string Email { get; set; } = string.Empty;
-        public string Token { get; set; } = string.Empty;
-        public DateTime TokenExpiration { get; set; }
         public string Message { get; set; } = string.Empty;
         public string? UserName { get; set; }
         public string? FormStep { get; set; }
@@ -116,8 +114,6 @@ namespace BankUPG.SharedKernal.Responses
         public int Mid { get; set; }
         public int BusinessEntityTypeId { get; set; }
         public string EntityName { get; set; } = string.Empty;
-        public string Token { get; set; } = string.Empty;
-        public DateTime TokenExpiration { get; set; }
         public string Message { get; set; } = string.Empty;
         public string? FormStep { get; set; }
         public int? Step { get; set; }
@@ -138,8 +134,6 @@ namespace BankUPG.SharedKernal.Responses
         public string? CkycIdentifier { get; set; }
         public bool ConsentGiven { get; set; }
         public DateTime? ConsentDate { get; set; }
-        public string Token { get; set; } = string.Empty;
-        public DateTime TokenExpiration { get; set; }
         public string Message { get; set; } = string.Empty;
         public string? FormStep { get; set; }
         public int? Step { get; set; }
@@ -180,8 +174,6 @@ namespace BankUPG.SharedKernal.Responses
         public string CategoryName { get; set; } = string.Empty;
         public int BusinessSubCategoryId { get; set; }
         public string SubCategoryName { get; set; } = string.Empty;
-        public string Token { get; set; } = string.Empty;
-        public DateTime TokenExpiration { get; set; }
         public string Message { get; set; } = string.Empty;
         public string? FormStep { get; set; }
         public int? Step { get; set; }
@@ -202,8 +194,6 @@ namespace BankUPG.SharedKernal.Responses
         public decimal? ExpectedSalesPerMonth { get; set; }
         public bool? HasGstin { get; set; }
         public string? Gstin { get; set; }
-        public string Token { get; set; } = string.Empty;
-        public DateTime TokenExpiration { get; set; }
         public string Message { get; set; } = string.Empty;
         public string? FormStep { get; set; }
         public int? Step { get; set; }
@@ -239,8 +229,6 @@ namespace BankUPG.SharedKernal.Responses
         public string Ifsccode { get; set; } = string.Empty;
         public string? BankName { get; set; }
         public string? AccountType { get; set; }
-        public string Token { get; set; } = string.Empty;
-        public DateTime TokenExpiration { get; set; }
         public string Message { get; set; } = string.Empty;
         public OnboardingStatusDto OnboardingStatus { get; set; } = new();
     }
@@ -271,8 +259,6 @@ namespace BankUPG.SharedKernal.Responses
         public string? WebsiteAppUrl { get; set; }
         public string? AndroidAppUrl { get; set; }
         public string? IosAppUrl { get; set; }
-        public string Token { get; set; } = string.Empty;
-        public DateTime TokenExpiration { get; set; }
         public string Message { get; set; } = string.Empty;
         public string? FormStep { get; set; }
         public int? Step { get; set; }
@@ -299,8 +285,6 @@ namespace BankUPG.SharedKernal.Responses
         public string SigningAuthorityPan { get; set; } = string.Empty;
         public int PepstatusId { get; set; }
         public string? PepstatusName { get; set; }
-        public string Token { get; set; } = string.Empty;
-        public DateTime TokenExpiration { get; set; }
         public string Message { get; set; } = string.Empty;
         public OnboardingStatusDto OnboardingStatus { get; set; } = new();
     }
@@ -348,8 +332,6 @@ namespace BankUPG.SharedKernal.Responses
         public string? OperatingState { get; set; }
         public string? OperatingPostalCode { get; set; }
         public string? OperatingCountry { get; set; }
-        public string Token { get; set; } = string.Empty;
-        public DateTime TokenExpiration { get; set; }
         public string Message { get; set; } = string.Empty;
         public OnboardingStatusDto OnboardingStatus { get; set; } = new();
     }
