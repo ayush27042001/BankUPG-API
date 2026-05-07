@@ -16,21 +16,15 @@ namespace BankUPG.Application.Services.BusinessDetails
     public class BusinessDetailsService : IBusinessDetailsService
     {
         private readonly AppDBContext _context;
-        private readonly JwtService _jwtService;
-        private readonly AppSettings _appSettings;
         private readonly IHttpClientFactory _http;
         private readonly ILogger<BusinessDetailsService> _logger;
 
         public BusinessDetailsService(
             AppDBContext context,
-            JwtService jwtService,
-            AppSettings appSettings,
             IHttpClientFactory http,
             ILogger<BusinessDetailsService> logger)
         {
             _context = context;
-            _jwtService = jwtService;
-            _appSettings = appSettings;
             _http = http;
             _logger = logger;
         }
@@ -107,13 +101,6 @@ namespace BankUPG.Application.Services.BusinessDetails
             var (_, formStep, step) = await GetOnboardingStepInfoAsync(mid);
             var onboardingStatus = await BuildOnboardingStatusAsync(mid);
 
-            var token = _jwtService.GenerateToken(
-                merchant.User.Email,
-                merchant.User.Email,
-                string.Empty,
-                merchant.User.UserId
-            );
-
             _logger.LogInformation("Business details {Operation} for userId: {UserId}, mid: {Mid}",
                 isUpdate ? "updated" : "saved", userId, mid);
 
@@ -123,8 +110,6 @@ namespace BankUPG.Application.Services.BusinessDetails
                 ExpectedSalesPerMonth = merchant.ExpectedSalesPerMonth,
                 HasGstin = merchant.HasGstin,
                 Gstin = merchant.Gstin,
-                Token = token,
-                TokenExpiration = DateTime.UtcNow.AddMinutes(_appSettings.Jwt.ExpirationMinutes),
                 Message = isUpdate ? "Business details updated successfully" : "Business details saved successfully",
                 FormStep = formStep,
                 Step = step,

@@ -13,19 +13,13 @@ namespace BankUPG.Application.Services.SigningAuthorityDetail
     public class SigningAuthorityDetailService : ISigningAuthorityDetailService
     {
         private readonly AppDBContext _context;
-        private readonly JwtService _jwtService;
-        private readonly AppSettings _appSettings;
         private readonly ILogger<SigningAuthorityDetailService> _logger;
 
         public SigningAuthorityDetailService(
             AppDBContext context,
-            JwtService jwtService,
-            AppSettings appSettings,
             ILogger<SigningAuthorityDetailService> logger)
         {
             _context = context;
-            _jwtService = jwtService;
-            _appSettings = appSettings;
             _logger = logger;
         }
 
@@ -106,13 +100,6 @@ namespace BankUPG.Application.Services.SigningAuthorityDetail
 
             await _context.SaveChangesAsync();
 
-            var token = _jwtService.GenerateToken(
-                merchant.User.Email,
-                merchant.User.Email,
-                string.Empty,
-                merchant.User.UserId
-            );
-
             _logger.LogInformation("Signing authority details {Operation} for userId: {UserId}, mid: {Mid}",
                 isUpdate ? "updated" : "saved", userId, mid);
 
@@ -125,8 +112,6 @@ namespace BankUPG.Application.Services.SigningAuthorityDetail
                 SigningAuthorityPan = request.SigningAuthorityPan.ToUpper(),
                 PepstatusId = request.PepstatusId,
                 PepstatusName = pepStatus.StatusName,
-                Token = token,
-                TokenExpiration = DateTime.UtcNow.AddMinutes(_appSettings.Jwt.ExpirationMinutes),
                 Message = isUpdate ? "Signing authority details updated successfully" : "Signing authority details saved successfully",
                 OnboardingStatus = await BuildOnboardingStatusAsync(mid)
             };

@@ -13,20 +13,14 @@ namespace BankUPG.Application.Services.Document
     public class DocumentService : IDocumentService
     {
         private readonly AppDBContext _context;
-        private readonly JwtService _jwtService;
-        private readonly AppSettings _appSettings;
         private readonly ILogger<DocumentService> _logger;
         private readonly string _uploadPath;
 
         public DocumentService(
             AppDBContext context,
-            JwtService jwtService,
-            AppSettings appSettings,
             ILogger<DocumentService> logger)
         {
             _context = context;
-            _jwtService = jwtService;
-            _appSettings = appSettings;
             _logger = logger;
             _uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", "Documents");
             
@@ -102,14 +96,6 @@ namespace BankUPG.Application.Services.Document
             _context.DocumentUploads.Add(documentUpload);
             await _context.SaveChangesAsync();
 
-            // Generate new token
-            var token = _jwtService.GenerateToken(
-                merchant.User.Email,
-                merchant.User.Email,
-                string.Empty,
-                merchant.User.UserId
-            );
-
             _logger.LogInformation("Document uploaded successfully for userId: {UserId}, mid: {Mid}, documentUploadId: {DocumentUploadId}",
                 userId, merchant.Mid, documentUpload.DocumentUploadId);
 
@@ -119,8 +105,6 @@ namespace BankUPG.Application.Services.Document
                 DocumentFileName = documentUpload.DocumentFileName,
                 DocumentFilePath = documentUpload.DocumentFilePath,
                 Message = "Document uploaded successfully",
-                Token = token,
-                TokenExpiration = DateTime.UtcNow.AddMinutes(_appSettings.Jwt.ExpirationMinutes),
                 OnboardingStatus = await BuildOnboardingStatusAsync(merchant.Mid)
             };
         }
@@ -199,14 +183,6 @@ namespace BankUPG.Application.Services.Document
             documentUpload.UpdatedDate = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            // Generate new token
-            var token = _jwtService.GenerateToken(
-                merchant.User.Email,
-                merchant.User.Email,
-                string.Empty,
-                merchant.User.UserId
-            );
-
             _logger.LogInformation("Document updated successfully for userId: {UserId}, mid: {Mid}, documentUploadId: {DocumentUploadId}",
                 userId, merchant.Mid, documentUpload.DocumentUploadId);
 
@@ -216,8 +192,6 @@ namespace BankUPG.Application.Services.Document
                 DocumentFileName = documentUpload.DocumentFileName,
                 DocumentFilePath = documentUpload.DocumentFilePath,
                 Message = "Document updated successfully",
-                Token = token,
-                TokenExpiration = DateTime.UtcNow.AddMinutes(_appSettings.Jwt.ExpirationMinutes),
                 OnboardingStatus = await BuildOnboardingStatusAsync(merchant.Mid)
             };
         }

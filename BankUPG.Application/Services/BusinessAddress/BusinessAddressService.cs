@@ -13,19 +13,13 @@ namespace BankUPG.Application.Services.BusinessAddress
     public class BusinessAddressService : IBusinessAddressService
     {
         private readonly AppDBContext _context;
-        private readonly JwtService _jwtService;
-        private readonly AppSettings _appSettings;
         private readonly ILogger<BusinessAddressService> _logger;
 
         public BusinessAddressService(
             AppDBContext context,
-            JwtService jwtService,
-            AppSettings appSettings,
             ILogger<BusinessAddressService> logger)
         {
             _context = context;
-            _jwtService = jwtService;
-            _appSettings = appSettings;
             _logger = logger;
         }
 
@@ -136,13 +130,6 @@ namespace BankUPG.Application.Services.BusinessAddress
 
             await _context.SaveChangesAsync();
 
-            var token = _jwtService.GenerateToken(
-                merchant.User.Email,
-                merchant.User.Email,
-                string.Empty,
-                merchant.User.UserId
-            );
-
             _logger.LogInformation("Business address {Operation} for userId: {UserId}, mid: {Mid}",
                 isUpdate ? "updated" : "saved", userId, mid);
 
@@ -166,8 +153,6 @@ namespace BankUPG.Application.Services.BusinessAddress
                 OperatingState = savedAddress.OperatingState,
                 OperatingPostalCode = savedAddress.OperatingPostalCode,
                 OperatingCountry = savedAddress.OperatingCountry,
-                Token = token,
-                TokenExpiration = DateTime.UtcNow.AddMinutes(_appSettings.Jwt.ExpirationMinutes),
                 Message = isUpdate ? "Business address updated successfully" : "Business address saved successfully",
                 OnboardingStatus = await BuildOnboardingStatusAsync(mid)
             };

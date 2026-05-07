@@ -13,19 +13,13 @@ namespace BankUPG.Application.Services.PhoneCkyc
     public class PhoneCkycService : IPhoneCkycService
     {
         private readonly AppDBContext _context;
-        private readonly JwtService _jwtService;
-        private readonly AppSettings _appSettings;
         private readonly ILogger<PhoneCkycService> _logger;
 
         public PhoneCkycService(
             AppDBContext context,
-            JwtService jwtService,
-            AppSettings appSettings,
             ILogger<PhoneCkycService> logger)
         {
             _context = context;
-            _jwtService = jwtService;
-            _appSettings = appSettings;
             _logger = logger;
         }
 
@@ -98,13 +92,6 @@ namespace BankUPG.Application.Services.PhoneCkyc
             var (currentStepName, formStep, step) = await GetOnboardingStepInfoAsync(mid);
             var onboardingStatus = await BuildOnboardingStatusAsync(mid);
 
-            var token = _jwtService.GenerateToken(
-                merchant.User.Email,
-                merchant.User.Email,
-                string.Empty,
-                merchant.User.UserId
-            );
-
             _logger.LogInformation("Phone CKYC {Operation} for userId: {UserId}, mid: {Mid}",
                 isUpdate ? "updated" : "saved", userId, mid);
 
@@ -114,8 +101,6 @@ namespace BankUPG.Application.Services.PhoneCkyc
                 CkycIdentifier = merchant.Ckycidentifier,
                 ConsentGiven = merchant.CkycconsentGiven ?? false,
                 ConsentDate = merchant.CkycconsentDate,
-                Token = token,
-                TokenExpiration = DateTime.UtcNow.AddMinutes(_appSettings.Jwt.ExpirationMinutes),
                 Message = isUpdate ? "Phone CKYC updated successfully" : "Phone CKYC saved successfully",
                 FormStep = formStep,
                 Step = step,

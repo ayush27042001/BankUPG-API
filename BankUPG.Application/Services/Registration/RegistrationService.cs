@@ -340,14 +340,6 @@ namespace BankUPG.Application.Services.Registration
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                // Generate JWT token
-                var token = _jwtService.GenerateToken(
-                    merchant.User.Email,
-                    request.NameOnPanCard,
-                    string.Empty,
-                    merchant.User.UserId
-                );
-
                 _logger.LogInformation("PAN details {Operation} for user: {UserId}, merchant: {Mid}", 
                     isUpdate ? "updated" : "saved", userId, mid);
 
@@ -360,8 +352,6 @@ namespace BankUPG.Application.Services.Registration
                     UserId = merchant.User.UserId,
                     Mid = mid,
                     Email = merchant.User.Email,
-                    Token = token,
-                    TokenExpiration = DateTime.UtcNow.AddMinutes(_appSettings.Jwt.ExpirationMinutes),
                     Message = isUpdate ? "PAN details updated successfully" : "PAN details saved successfully",
                     UserName = request.NameOnPanCard,
                     FormStep = formStep,

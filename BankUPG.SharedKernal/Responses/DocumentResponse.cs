@@ -27,8 +27,6 @@ namespace BankUPG.SharedKernal.Responses
         public string DocumentFileName { get; set; } = string.Empty;
         public string DocumentFilePath { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
-        public string? Token { get; set; }
-        public DateTime? TokenExpiration { get; set; }
         public OnboardingStatusDto? OnboardingStatus { get; set; }
     }
 

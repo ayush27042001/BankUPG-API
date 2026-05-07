@@ -13,19 +13,13 @@ namespace BankUPG.Application.Services.BusinessEntity
     public class BusinessEntityService : IBusinessEntityService
     {
         private readonly AppDBContext _context;
-        private readonly JwtService _jwtService;
-        private readonly AppSettings _appSettings;
         private readonly ILogger<BusinessEntityService> _logger;
 
         public BusinessEntityService(
             AppDBContext context,
-            JwtService jwtService,
-            AppSettings appSettings,
             ILogger<BusinessEntityService> logger)
         {
             _context = context;
-            _jwtService = jwtService;
-            _appSettings = appSettings;
             _logger = logger;
         }
 
@@ -121,14 +115,6 @@ namespace BankUPG.Application.Services.BusinessEntity
             var (currentStepName, formStep, step) = await GetOnboardingStepInfoAsync(mid);
             var onboardingStatus = await BuildOnboardingStatusAsync(mid);
 
-            // Generate new JWT token
-            var token = _jwtService.GenerateToken(
-                merchant.User.Email,
-                merchant.User.Email,
-                string.Empty,
-                merchant.User.UserId
-            );
-
             _logger.LogInformation("Business entity {Operation} for userId: {UserId}, mid: {Mid}, entityTypeId: {EntityTypeId}",
                 isUpdate ? "updated" : "saved", userId, mid, request.BusinessEntityTypeId);
 
@@ -137,8 +123,6 @@ namespace BankUPG.Application.Services.BusinessEntity
                 Mid = mid,
                 BusinessEntityTypeId = request.BusinessEntityTypeId,
                 EntityName = entityType.EntityName,
-                Token = token,
-                TokenExpiration = DateTime.UtcNow.AddMinutes(_appSettings.Jwt.ExpirationMinutes),
                 Message = isUpdate ? "Business entity updated successfully" : "Business entity saved successfully",
                 FormStep = formStep,
                 Step = step,
