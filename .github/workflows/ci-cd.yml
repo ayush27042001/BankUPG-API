@@ -121,19 +121,52 @@ jobs:
       - name: Remove appsettings.Development.json
         run: rm -f ${{ env.PUBLISH_PATH }}/appsettings.Development.json
         
-      - name: Stop IIS Application Pool
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Create app_offline.htm
+        run: |
+          cat > ${{ env.PUBLISH_PATH }}/app_offline.htm << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Application Under Maintenance</title>
+            <style>
+              body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f5f5f5; }
+              .container { text-align: center; padding: 40px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+              h1 { color: #333; }
+              p { color: #666; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>🔧 Application Under Maintenance</h1>
+              <p>We're currently deploying updates. Please check back in a few minutes.</p>
+            </div>
+          </body>
+          </html>
+          EOF
+          
+      - name: Upload app_offline.htm via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          port: ${{ secrets.SSH_PORT || '22' }}
-          script: |
-            echo "Stopping application pool..."
-            Import-Module WebAdministration
-            Stop-WebAppPool -Name "BankUPG"
-            Write-Output "Application pool stopped successfully"
-            
+          server: ${{ secrets.PLESK_FTP_HOST }}
+          username: ${{ secrets.PLESK_FTP_USERNAME }}
+          password: ${{ secrets.PLESK_FTP_PASSWORD }}
+          local-dir: ${{ env.PUBLISH_PATH }}/
+          server-dir: /
+          protocol: ftp
+          port: 21
+          exclude: |
+            **/*.dll
+            **/*.exe
+            **/*.json
+            **/*.pdb
+            **/*.xml
+            **/*.config
+            **/runtimes/**
+          timeout: 60000
+          
+      - name: Wait for app to shutdown
+        run: sleep 10
+        
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -154,7 +187,7 @@ jobs:
             web.config.bak
           timeout: 120000
           
-      - name: Start IIS Application Pool
+      - name: Delete app_offline.htm via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -162,10 +195,13 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT || '22' }}
           script: |
-            echo "Starting application pool..."
-            Import-Module WebAdministration
-            Start-WebAppPool -Name "BankUPG"
-            Write-Output "Application pool started successfully"
+            cd "${{ secrets.DEPLOY_PATH || '/inetpub/wwwroot/BankUPG' }}"
+            if (Test-Path app_offline.htm) {
+              Remove-Item app_offline.htm
+              Write-Output "app_offline.htm deleted successfully"
+            } else {
+              Write-Output "app_offline.htm not found"
+            }
             
       - name: Deployment Success Notification
         run: |
