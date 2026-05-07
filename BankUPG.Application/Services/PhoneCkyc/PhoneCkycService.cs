@@ -13,31 +13,95 @@ namespace BankUPG.Application.Services.PhoneCkyc
     public class PhoneCkycService : IPhoneCkycService
     {
         private readonly AppDBContext _context;
+        private readonly OtpService _otpService;
+        private readonly JwtService _jwtService;
+        private readonly AppSettings _appSettings;
         private readonly ILogger<PhoneCkycService> _logger;
 
         public PhoneCkycService(
             AppDBContext context,
+            OtpService otpService,
+            JwtService jwtService,
+            AppSettings appSettings,
             ILogger<PhoneCkycService> logger)
         {
             _context = context;
+            _otpService = otpService;
+            _jwtService = jwtService;
+            _appSettings = appSettings;
             _logger = logger;
+        }
+
+        public async Task<OtpResponse> SendOtpAsync(int userId)
+        {
+            var merchant = await _context.Merchants
+                .Include(m => m.User)
+                .FirstOrDefaultAsync(m => m.UserId == userId);
+
+            if (merchant == null || merchant.User == null)
+                throw new InvalidOperationException("User or merchant not found.");
+
+            var mobileNumber = merchant.User.MobileNumber;
+            if (string.IsNullOrEmpty(mobileNumber))
+                throw new InvalidOperationException("Mobile number not found for user.");
+
+            var otpResult = await _otpService.GenerateAndSendOtpAsync(
+                mobileNumber,
+                merchant.Mid,
+                userId,
+                "PHONE_CKYC"
+            );
+
+            _logger.LogInformation("OTP sent for Phone CKYC to userId: {UserId}, mobile: {Mobile}", userId, mobileNumber);
+
+            return new OtpResponse
+            {
+                OtpExpirySeconds = otpResult.OtpExpirySeconds,
+                Message = "OTP sent successfully to your registered mobile number"
+            };
+        }
+
+        public async Task<OtpVerificationResponse> VerifyOtpAsync(int userId, string otp)
+        {
+            var merchant = await _context.Merchants
+                .Include(m => m.User)
+                .FirstOrDefaultAsync(m => m.UserId == userId);
+
+            if (merchant == null || merchant.User == null)
+                throw new InvalidOperationException("User or merchant not found.");
+
+            var mobileNumber = merchant.User.MobileNumber;
+            if (string.IsNullOrEmpty(mobileNumber))
+                throw new InvalidOperationException("Mobile number not found for user.");
+
+            var verificationResult = await _otpService.VerifyOtpAsync(
+                mobileNumber,
+                otp,
+                merchant.Mid,
+                userId,
+                "PHONE_CKYC"
+            );
+
+            _logger.LogInformation("OTP verification for Phone CKYC: {Result} for userId: {UserId}", 
+                verificationResult.IsVerified ? "Success" : "Failed", userId);
+
+            return verificationResult;
         }
 
         public async Task<PhoneCkycResponse?> GetPhoneCkycAsync(int userId)
         {
             var merchant = await _context.Merchants
+                .Include(m => m.User)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.UserId == userId);
 
-            if (merchant == null)
-                return null;
-
-            if (merchant.CkycconsentGiven == null && merchant.Ckycidentifier == null)
+            if (merchant == null || merchant.User == null)
                 return null;
 
             return new PhoneCkycResponse
             {
                 Mid = merchant.Mid,
+                MobileNumber = $"+91{merchant.User.MobileNumber}",
                 CkycIdentifier = merchant.Ckycidentifier,
                 ConsentGiven = merchant.CkycconsentGiven ?? false,
                 ConsentDate = merchant.CkycconsentDate
@@ -92,6 +156,13 @@ namespace BankUPG.Application.Services.PhoneCkyc
             var (currentStepName, formStep, step) = await GetOnboardingStepInfoAsync(mid);
             var onboardingStatus = await BuildOnboardingStatusAsync(mid);
 
+            var token = _jwtService.GenerateToken(
+                merchant.User.Email,
+                merchant.User.Email,
+                string.Empty,
+                merchant.User.UserId
+            );
+
             _logger.LogInformation("Phone CKYC {Operation} for userId: {UserId}, mid: {Mid}",
                 isUpdate ? "updated" : "saved", userId, mid);
 
@@ -101,6 +172,8 @@ namespace BankUPG.Application.Services.PhoneCkyc
                 CkycIdentifier = merchant.Ckycidentifier,
                 ConsentGiven = merchant.CkycconsentGiven ?? false,
                 ConsentDate = merchant.CkycconsentDate,
+                Token = token,
+                TokenExpiration = DateTime.UtcNow.AddMinutes(_appSettings.Jwt.ExpirationMinutes),
                 Message = isUpdate ? "Phone CKYC updated successfully" : "Phone CKYC saved successfully",
                 FormStep = formStep,
                 Step = step,

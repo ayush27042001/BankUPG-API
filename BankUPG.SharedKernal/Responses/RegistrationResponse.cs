@@ -123,6 +123,7 @@ namespace BankUPG.SharedKernal.Responses
     public class PhoneCkycResponse
     {
         public int Mid { get; set; }
+        public string MobileNumber { get; set; } = string.Empty;
         public string? CkycIdentifier { get; set; }
         public bool ConsentGiven { get; set; }
         public DateTime? ConsentDate { get; set; }

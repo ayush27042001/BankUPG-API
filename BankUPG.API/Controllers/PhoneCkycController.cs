@@ -27,9 +27,9 @@ namespace BankUPG.API.Controllers
         }
 
         /// <summary>
-        /// Get Phone CKYC details for authenticated user
+        /// Get Phone CKYC details for authenticated user (includes mobile number)
         /// </summary>
-        /// <returns>Current CKYC identifier and consent status</returns>
+        /// <returns>Mobile number and current CKYC identifier/consent status</returns>
         [HttpGet]
         [Authorize]
         [ProducesResponseType(typeof(ApiResponse<PhoneCkycResponse>), StatusCodes.Status200OK)]
@@ -76,6 +76,130 @@ namespace BankUPG.API.Controllers
                 {
                     Success = false,
                     Message = "An error occurred while retrieving Phone CKYC details"
+                });
+            }
+        }
+
+        /// <summary>
+        /// Send OTP to registered mobile number for Phone CKYC verification
+        /// </summary>
+        /// <returns>OTP expiry time</returns>
+        [HttpPost("send-otp")]
+        [Authorize]
+        [ProducesResponseType(typeof(ApiResponse<OtpResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status429TooManyRequests)]
+        public async Task<ActionResult<ApiResponse<OtpResponse>>> SendOtp()
+        {
+            try
+            {
+                var userIdClaim = User.FindAll(ClaimTypes.NameIdentifier)
+                    .FirstOrDefault(c => int.TryParse(c.Value, out _));
+                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+                {
+                    return Unauthorized(new ApiResponse<OtpResponse>
+                    {
+                        Success = false,
+                        Message = "Invalid user token"
+                    });
+                }
+
+                var result = await _phoneCkycService.SendOtpAsync(userId);
+
+                return Ok(new ApiResponse<OtpResponse>
+                {
+                    Success = true,
+                    Message = result.Message,
+                    Data = result
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning("Send OTP failed: {Message}", ex.Message);
+                return BadRequest(new ApiResponse<OtpResponse>
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending OTP for Phone CKYC userId: {UserId}",
+                    User.FindAll(ClaimTypes.NameIdentifier).FirstOrDefault(c => int.TryParse(c.Value, out _))?.Value);
+                return StatusCode(500, new ApiResponse<OtpResponse>
+                {
+                    Success = false,
+                    Message = "An error occurred while sending OTP"
+                });
+            }
+        }
+
+        /// <summary>
+        /// Verify OTP for Phone CKYC
+        /// </summary>
+        /// <param name="request">OTP code</param>
+        /// <returns>Verification result</returns>
+        [HttpPost("verify-otp")]
+        [Authorize]
+        [ProducesResponseType(typeof(ApiResponse<OtpVerificationResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<ApiResponse<OtpVerificationResponse>>> VerifyOtp([FromBody] VerifyOtpRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList();
+
+                    return BadRequest(new ApiResponse<OtpVerificationResponse>
+                    {
+                        Success = false,
+                        Message = "Validation failed",
+                        Errors = errors
+                    });
+                }
+
+                var userIdClaim = User.FindAll(ClaimTypes.NameIdentifier)
+                    .FirstOrDefault(c => int.TryParse(c.Value, out _));
+                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+                {
+                    return Unauthorized(new ApiResponse<OtpVerificationResponse>
+                    {
+                        Success = false,
+                        Message = "Invalid user token"
+                    });
+                }
+
+                var result = await _phoneCkycService.VerifyOtpAsync(userId, request.Otp);
+
+                return Ok(new ApiResponse<OtpVerificationResponse>
+                {
+                    Success = result.IsVerified,
+                    Message = result.Message,
+                    Data = result
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning("Verify OTP failed: {Message}", ex.Message);
+                return BadRequest(new ApiResponse<OtpVerificationResponse>
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error verifying OTP for Phone CKYC userId: {UserId}",
+                    User.FindAll(ClaimTypes.NameIdentifier).FirstOrDefault(c => int.TryParse(c.Value, out _))?.Value);
+                return StatusCode(500, new ApiResponse<OtpVerificationResponse>
+                {
+                    Success = false,
+                    Message = "An error occurred while verifying OTP"
                 });
             }
         }
