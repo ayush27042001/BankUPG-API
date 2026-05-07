@@ -17,16 +17,19 @@ namespace BankUPG.Application.Services.BusinessDetails
     {
         private readonly AppDBContext _context;
         private readonly IHttpClientFactory _http;
+        private readonly AppSettings _appSettings;
         private readonly ILogger<BusinessDetailsService> _logger;
 
         public BusinessDetailsService(
             AppDBContext context,
             IHttpClientFactory http,
-            ILogger<BusinessDetailsService> logger)
+            ILogger<BusinessDetailsService> logger,
+            AppSettings appSettings)
         {
             _context = context;
             _http = http;
             _logger = logger;
+            _appSettings = appSettings;
         }
 
         public async Task<BusinessDetailsResponse?> GetBusinessDetailsAsync(int userId)
