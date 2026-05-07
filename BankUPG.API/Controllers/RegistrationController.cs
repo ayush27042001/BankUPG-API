@@ -464,11 +464,31 @@ namespace BankUPG.API.Controllers
 
                 // Check format
                 var isValidFormat = IsValidPanFormat(panNumber);
-
+                var isAlreadyRegistered = true;
                 // Check if already registered
-                var isAlreadyRegistered = await _context.BusinessPandetails
+                var userIdClaim = User.FindAll(ClaimTypes.NameIdentifier)
+                    .FirstOrDefault(c => int.TryParse(c.Value, out _));
+                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+                {
+                    isAlreadyRegistered = await _context.BusinessPandetails
                     .AsNoTracking()
                     .AnyAsync(p => p.PancardNumber == panNumber);
+                }
+                else
+                {
+                    var merchant = await _context.Merchants
+                                           .Include(m => m.User)
+                                           .FirstOrDefaultAsync(m => m.UserId == userId);
+
+                    if (merchant == null || merchant.User == null)
+                    {
+                        throw new InvalidOperationException("User or merchant not found. Please ensure you are logged in.");
+                    }
+
+                    isAlreadyRegistered = await _context.BusinessPandetails
+                    .AsNoTracking()
+                    .AnyAsync(p => p.PancardNumber == panNumber && p.Mid== merchant.Mid);
+                }
 
                 return Ok(new ApiResponse<PanValidationResult>
                 {
