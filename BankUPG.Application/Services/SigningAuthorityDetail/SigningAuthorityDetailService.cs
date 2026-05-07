@@ -92,7 +92,7 @@ namespace BankUPG.Application.Services.SigningAuthorityDetail
             }
             else
             {
-                _context.SigningAuthorityDetails.Add(new SigningAuthorityDetail
+                _context.SigningAuthorityDetails.Add(new BankUPG.Infrastructure.Entities.SigningAuthorityDetail
                 {
                     Mid = mid,
                     SigningAuthorityName = request.SigningAuthorityName,
