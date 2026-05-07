@@ -36,4 +36,17 @@ namespace BankUPG.SharedKernal.Responses
         public string? pan_status { get; set; }
         public string? aadhaar_seeding_status_desc { get; set; }
     }
+
+    public class CashfreeBankVerifyResponse
+    {
+        public string? account_status { get; set; }
+        public string? account_status_code { get; set; }
+        public string? bank_account { get; set; }
+        public string? bank_name { get; set; }
+        public string? ifsc { get; set; }
+        public string? name_at_bank { get; set; }
+        public string? name_provided { get; set; }
+        public int? reference_id { get; set; }
+        public string? message { get; set; }
+    }
 }

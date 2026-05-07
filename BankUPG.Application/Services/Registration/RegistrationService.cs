@@ -288,6 +288,7 @@ namespace BankUPG.Application.Services.Registration
                     existingPanDetail.DateOfBirthOrIncorporation = DateOnly.FromDateTime(request.DateOfBirthOrIncorporation);
                     existingPanDetail.PanverificationStatus = "COMPLETED";
                     existingPanDetail.UpdatedDate = DateTime.UtcNow;
+                    existingPanDetail.PanverifiedDate = DateTime.UtcNow;
                     panDetail = existingPanDetail;
                 }
                 else
@@ -301,7 +302,8 @@ namespace BankUPG.Application.Services.Registration
                         DateOfBirthOrIncorporation = DateOnly.FromDateTime(request.DateOfBirthOrIncorporation),
                         PanverificationStatus = "COMPLETED",
                         CreatedDate = DateTime.UtcNow,
-                        UpdatedDate = DateTime.UtcNow
+                        UpdatedDate = DateTime.UtcNow,
+                        PanverifiedDate = DateTime.UtcNow,
                     };
                     _context.BusinessPandetails.Add(panDetail);
                 }
