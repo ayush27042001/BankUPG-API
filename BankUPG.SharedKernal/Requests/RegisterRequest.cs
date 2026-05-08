@@ -192,17 +192,32 @@ namespace BankUPG.SharedKernal.Requests
             ErrorMessage = "Invalid payment collection preference. Allowed values: ON_MY_WEBSITE_APP, WITHOUT_WEBSITE_APP")]
         public string PaymentCollectionPreference { get; set; } = string.Empty;
 
+        private string? _websiteAppUrl;
         [Url(ErrorMessage = "Invalid website/app URL format")]
         [MaxLength(500, ErrorMessage = "Website/App URL cannot exceed 500 characters")]
-        public string? WebsiteAppUrl { get; set; }
+        public string? WebsiteAppUrl
+        {
+            get => _websiteAppUrl;
+            set => _websiteAppUrl = string.IsNullOrWhiteSpace(value) ? null : value;
+        }
 
+        private string? _androidAppUrl;
         [Url(ErrorMessage = "Invalid Android app URL format")]
         [MaxLength(500, ErrorMessage = "Android App URL cannot exceed 500 characters")]
-        public string? AndroidAppUrl { get; set; }
+        public string? AndroidAppUrl
+        {
+            get => _androidAppUrl;
+            set => _androidAppUrl = string.IsNullOrWhiteSpace(value) ? null : value;
+        }
 
+        private string? _iosAppUrl;
         [Url(ErrorMessage = "Invalid iOS app URL format")]
         [MaxLength(500, ErrorMessage = "iOS App URL cannot exceed 500 characters")]
-        public string? IosAppUrl { get; set; }
+        public string? IosAppUrl
+        {
+            get => _iosAppUrl;
+            set => _iosAppUrl = string.IsNullOrWhiteSpace(value) ? null : value;
+        }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
