@@ -30,6 +30,8 @@ using BankUPG.Application.Interfaces.DocumentMaster;
 using BankUPG.Application.Services.DocumentMaster;
 using BankUPG.Application.Interfaces.BusinessProofTypeMaster;
 using BankUPG.Application.Services.BusinessProofTypeMaster;
+using BankUPG.Application.Interfaces.ServiceAgreement;
+using BankUPG.Application.Services.ServiceAgreement;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -78,6 +80,7 @@ builder.Services.AddScoped<IBusinessAddressService, BusinessAddressService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IPepstatusMasterService, PepstatusMasterService>();
 builder.Services.AddScoped<IBusinessProofTypeMasterService, BusinessProofTypeMasterService>();
+builder.Services.AddScoped<IServiceAgreementService, ServiceAgreementService>();
 
 // Add HttpClientFactory for external API calls
 builder.Services.AddHttpClient();

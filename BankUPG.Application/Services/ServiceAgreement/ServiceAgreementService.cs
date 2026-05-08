@@ -1,58 +1,60 @@
-using BankUPG.Application.Interfaces.SigningAuthorityDetail;
-using BankUPG.Application.Services.Auth;
+using BankUPG.Application.Interfaces.ServiceAgreement;
 using BankUPG.Infrastructure.Data;
 using BankUPG.Infrastructure.Entities;
-using BankUPG.SharedKernal.Models;
 using BankUPG.SharedKernal.Requests;
 using BankUPG.SharedKernal.Responses;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace BankUPG.Application.Services.SigningAuthorityDetail
+namespace BankUPG.Application.Services.ServiceAgreement
 {
-    public class SigningAuthorityDetailService : ISigningAuthorityDetailService
+    public class ServiceAgreementService : IServiceAgreementService
     {
         private readonly AppDBContext _context;
-        private readonly ILogger<SigningAuthorityDetailService> _logger;
+        private readonly ILogger<ServiceAgreementService> _logger;
 
-        public SigningAuthorityDetailService(
+        public ServiceAgreementService(
             AppDBContext context,
-            ILogger<SigningAuthorityDetailService> logger)
+            ILogger<ServiceAgreementService> logger)
         {
             _context = context;
             _logger = logger;
         }
 
-        public async Task<SigningAuthorityDetailResponse?> GetSigningAuthorityDetailAsync(int userId)
+        public async Task<ServiceAgreementResponse?> GetServiceAgreementAsync(int userId)
         {
             var merchant = await _context.Merchants
                 .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.UserId == userId);
 
             if (merchant == null)
-                return null;
-
-            var detail = await _context.SigningAuthorityDetails
-                .AsNoTracking()
-                .Include(s => s.Pepstatus)
-                .FirstOrDefaultAsync(s => s.Mid == merchant.Mid);
-
-            if (detail == null)
-                return null;
-
-            return new SigningAuthorityDetailResponse
             {
-                SigningAuthorityDetailId = detail.SigningAuthorityDetailId,
-                Mid = detail.Mid,
-                SigningAuthorityName = detail.SigningAuthorityName,
-                SigningAuthorityEmail = detail.SigningAuthorityEmail,
-                SigningAuthorityPan = detail.SigningAuthorityPan,
-                PepstatusId = detail.PepstatusId,
-                PepstatusName = detail.Pepstatus?.StatusName
+                _logger.LogWarning("Merchant not found for userId: {UserId}", userId);
+                return null;
+            }
+
+            var agreement = await _context.ServiceAgreements
+                .AsNoTracking()
+                .FirstOrDefaultAsync(sa => sa.Mid == merchant.Mid);
+
+            if (agreement == null)
+            {
+                _logger.LogInformation("Service agreement not found for merchant: {Mid}", merchant.Mid);
+                return null;
+            }
+
+            return new ServiceAgreementResponse
+            {
+                ServiceAgreementId = agreement.ServiceAgreementId,
+                Mid = agreement.Mid,
+                SignatureData = agreement.SignatureData,
+                AgreementDate = agreement.AgreementDate,
+                IsAccepted = agreement.IsAccepted,
+                SubmittedDate = agreement.SubmittedDate
             };
         }
 
-        public async Task<SigningAuthorityDetailSavedResponse> SaveSigningAuthorityDetailAsync(int userId, SaveSigningAuthorityDetailRequest request)
+        public async Task<ServiceAgreementSavedResponse> SaveServiceAgreementAsync(int userId, SaveServiceAgreementRequest request)
         {
             var merchant = await _context.Merchants
                 .Include(m => m.User)
@@ -61,45 +63,40 @@ namespace BankUPG.Application.Services.SigningAuthorityDetail
             if (merchant == null || merchant.User == null)
                 throw new InvalidOperationException("User or merchant not found. Please ensure you are logged in.");
 
-            // Validate PEP status exists
-            var pepStatus = await _context.Pepstatuses
-                .AsNoTracking()
-                .FirstOrDefaultAsync(p => p.PepstatusId == request.PepstatusId);
-
-            if (pepStatus == null)
-                throw new ArgumentException("Invalid PEP status");
+            if (!request.IsAccepted)
+                throw new ArgumentException("You must accept the service agreement terms and conditions.");
 
             var mid = merchant.Mid;
 
-            var existingDetail = await _context.SigningAuthorityDetails
-                .FirstOrDefaultAsync(s => s.Mid == mid);
+            var existingAgreement = await _context.ServiceAgreements
+                .FirstOrDefaultAsync(sa => sa.Mid == mid);
 
-            bool isUpdate = existingDetail != null;
+            bool isUpdate = existingAgreement != null;
 
             if (isUpdate)
             {
-                existingDetail!.SigningAuthorityName = request.SigningAuthorityName;
-                existingDetail.SigningAuthorityEmail = request.SigningAuthorityEmail;
-                existingDetail.SigningAuthorityPan = request.SigningAuthorityPan.ToUpper();
-                existingDetail.PepstatusId = request.PepstatusId;
-                existingDetail.UpdatedDate = DateTime.UtcNow;
+                existingAgreement!.SignatureData = request.SignatureData;
+                existingAgreement.AgreementDate = request.AgreementDate;
+                existingAgreement.IsAccepted = request.IsAccepted;
+                existingAgreement.SubmittedDate = DateTime.UtcNow;
+                existingAgreement.UpdatedDate = DateTime.UtcNow;
             }
             else
             {
-                _context.SigningAuthorityDetails.Add(new BankUPG.Infrastructure.Entities.SigningAuthorityDetail
+                _context.ServiceAgreements.Add(new BankUPG.Infrastructure.Entities.ServiceAgreement
                 {
                     Mid = mid,
-                    SigningAuthorityName = request.SigningAuthorityName,
-                    SigningAuthorityEmail = request.SigningAuthorityEmail,
-                    SigningAuthorityPan = request.SigningAuthorityPan.ToUpper(),
-                    PepstatusId = request.PepstatusId,
+                    SignatureData = request.SignatureData,
+                    AgreementDate = request.AgreementDate,
+                    IsAccepted = request.IsAccepted,
+                    SubmittedDate = DateTime.UtcNow,
                     CreatedDate = DateTime.UtcNow,
                     UpdatedDate = DateTime.UtcNow
                 });
             }
 
             var existingStepTracking = await _context.OnboardingStepTrackings
-                .FirstOrDefaultAsync(s => s.Mid == mid && s.StepName == "Signing Authority Details");
+                .FirstOrDefaultAsync(s => s.Mid == mid && s.StepName == "Service Agreement");
 
             if (existingStepTracking != null)
             {
@@ -112,8 +109,8 @@ namespace BankUPG.Application.Services.SigningAuthorityDetail
                 _context.OnboardingStepTrackings.Add(new OnboardingStepTracking
                 {
                     Mid = mid,
-                    StepName = "Signing Authority Details",
-                    StepKey = "SIGNING_AUTHORITY_DETAILS",
+                    StepName = "Service Agreement",
+                    StepKey = "SERVICE_AGREEMENT",
                     StepStatus = "COMPLETED",
                     IsCompleted = true,
                     CompletedDate = DateTime.UtcNow,
@@ -121,22 +118,29 @@ namespace BankUPG.Application.Services.SigningAuthorityDetail
                 });
             }
 
+            if (merchant.OnboardingStatusId < (int)OnboardingStatusEnum.ConnectPlatform)
+                merchant.OnboardingStatusId = (int)OnboardingStatusEnum.ConnectPlatform;
+
+            merchant.UpdatedDate = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Signing authority details {Operation} for userId: {UserId}, mid: {Mid}",
+            var savedAgreement = await _context.ServiceAgreements.FirstOrDefaultAsync(sa => sa.Mid == mid);
+            var onboardingStatus = await BuildOnboardingStatusAsync(mid);
+
+            _logger.LogInformation("Service agreement {Operation} for userId: {UserId}, mid: {Mid}",
                 isUpdate ? "updated" : "saved", userId, mid);
 
-            return new SigningAuthorityDetailSavedResponse
+            return new ServiceAgreementSavedResponse
             {
-                SigningAuthorityDetailId = isUpdate ? existingDetail!.SigningAuthorityDetailId : (await _context.SigningAuthorityDetails.FirstOrDefaultAsync(s => s.Mid == mid))!.SigningAuthorityDetailId,
+                ServiceAgreementId = savedAgreement!.ServiceAgreementId,
                 Mid = mid,
-                SigningAuthorityName = request.SigningAuthorityName,
-                SigningAuthorityEmail = request.SigningAuthorityEmail,
-                SigningAuthorityPan = request.SigningAuthorityPan.ToUpper(),
-                PepstatusId = request.PepstatusId,
-                PepstatusName = pepStatus.StatusName,
-                Message = isUpdate ? "Signing authority details updated successfully" : "Signing authority details saved successfully",
-                OnboardingStatus = await BuildOnboardingStatusAsync(mid)
+                SignatureData = savedAgreement.SignatureData,
+                AgreementDate = savedAgreement.AgreementDate,
+                IsAccepted = savedAgreement.IsAccepted,
+                SubmittedDate = savedAgreement.SubmittedDate,
+                Message = isUpdate ? "Service agreement updated successfully" : "Service agreement submitted successfully",
+                OnboardingStatus = onboardingStatus
             };
         }
 

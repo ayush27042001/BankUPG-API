@@ -9,9 +9,7 @@ namespace BankUPG.Infrastructure.Entities
         BusinessCategory = 5,
         ShareBusinessDetails = 6,
         ConnectPlatform = 7,
-        UploadDocuments = 8,
-        ServiceAgreement = 9,
-        Completed = 10
+        Completed = 8
     }
 
     public enum ConnectPlatformStepEnum
@@ -20,6 +18,7 @@ namespace BankUPG.Infrastructure.Entities
         ShareBankAccountDetails = 2,
         SigningAuthorityDetails = 3,
         VerifyBusinessAddress = 4,
-        CompleteVideoKYC = 5
+        CompleteVideoKYC = 5,
+        ServiceAgreement = 6
     }
 }

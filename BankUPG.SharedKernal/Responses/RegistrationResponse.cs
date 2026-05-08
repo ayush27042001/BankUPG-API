@@ -25,6 +25,8 @@ namespace BankUPG.SharedKernal.Responses
         public int StepNumber { get; set; }
         public string StepName { get; set; } = string.Empty;
         public bool IsCompleted { get; set; }
+        public bool IsOnboardingCompleted { get; set; }
+        public bool IsServiceAgreementSubmitted { get; set; }
         public List<OnboardingStepDto> Steps { get; set; } = new();
         public ConnectPlatformStepsDto? ConnectPlatformSteps { get; set; }
     }
@@ -32,7 +34,7 @@ namespace BankUPG.SharedKernal.Responses
     public class ConnectPlatformStepsDto
     {
         public int CurrentStep { get; set; }
-        public int TotalSteps { get; set; } = 5;
+        public int TotalSteps { get; set; } = 6;
         public List<ConnectPlatformStepDto> Steps { get; set; } = new();
     }
 
@@ -244,6 +246,28 @@ namespace BankUPG.SharedKernal.Responses
         public string? NameAtBank { get; set; }
         public string? BankName { get; set; }
         public string Message { get; set; } = string.Empty;
+    }
+
+    public class ServiceAgreementResponse
+    {
+        public int ServiceAgreementId { get; set; }
+        public int Mid { get; set; }
+        public string? SignatureData { get; set; }
+        public DateTime? AgreementDate { get; set; }
+        public bool IsAccepted { get; set; }
+        public DateTime? SubmittedDate { get; set; }
+    }
+
+    public class ServiceAgreementSavedResponse
+    {
+        public int ServiceAgreementId { get; set; }
+        public int Mid { get; set; }
+        public string? SignatureData { get; set; }
+        public DateTime? AgreementDate { get; set; }
+        public bool IsAccepted { get; set; }
+        public DateTime? SubmittedDate { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public OnboardingStatusDto OnboardingStatus { get; set; } = new();
     }
 
     public class ConnectPlatformResponse

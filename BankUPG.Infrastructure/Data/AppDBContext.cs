@@ -61,6 +61,8 @@ public partial class AppDBContext : DbContext
 
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
 
+    public virtual DbSet<ServiceAgreement> ServiceAgreements { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Data Source=103.205.142.34,1433;Initial Catalog=BankuPG;Persist Security Info=True;User ID=sa;Password=zUG93NOh6WE7BQIS;TrustServerCertificate=True");
@@ -420,6 +422,9 @@ public partial class AppDBContext : DbContext
                 .HasDefaultValue(false)
                 .HasColumnName("HasGSTIN");
             entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.IsOnboardingCompleted)
+                .HasDefaultValue(false)
+                .HasColumnName("IsOnboardingCompleted");
             entity.Property(e => e.OnboardingStatusId)
                 .HasDefaultValue(1)
                 .HasColumnName("OnboardingStatusID");
@@ -794,6 +799,30 @@ public partial class AppDBContext : DbContext
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("FK_RefreshTokens_Users");
+        });
+
+        modelBuilder.Entity<ServiceAgreement>(entity =>
+        {
+            entity.HasKey(e => e.ServiceAgreementId).HasName("PK__ServiceAgreements__ID");
+
+            entity.HasIndex(e => e.Mid, "UQ_ServiceAgreements_MID").IsUnique();
+
+            entity.Property(e => e.ServiceAgreementId).HasColumnName("ServiceAgreementID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.SignatureData).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.AgreementDate).HasColumnType("date");
+            entity.Property(e => e.IsAccepted).HasDefaultValue(false);
+            entity.Property(e => e.SubmittedDate).HasColumnType("datetime");
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithOne(p => p.ServiceAgreement)
+                .HasForeignKey<ServiceAgreement>(d => d.Mid)
+                .HasConstraintName("FK_ServiceAgreements_Merchants");
         });
 
         OnModelCreatingPartial(modelBuilder);
