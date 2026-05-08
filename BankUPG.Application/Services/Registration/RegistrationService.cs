@@ -283,7 +283,7 @@ namespace BankUPG.Application.Services.Registration
                 if (isUpdate)
                 {
                     // Update existing PAN details
-                    existingPanDetail.PancardNumber = request.PanCardNumber.ToUpper();
+                    existingPanDetail!.PancardNumber = request.PanCardNumber.ToUpper();
                     existingPanDetail.NameOnPancard = request.NameOnPanCard;
                     existingPanDetail.DateOfBirthOrIncorporation = DateOnly.FromDateTime(request.DateOfBirthOrIncorporation);
                     existingPanDetail.PanverificationStatus = "COMPLETED";
@@ -599,7 +599,7 @@ namespace BankUPG.Application.Services.Registration
             var connectPlatformSteps = await BuildConnectPlatformStepsAsync(mid);
             var merchant = await _context.Merchants.AsNoTracking().FirstOrDefaultAsync(m => m.Mid == mid);
 
-            var steps = stepOrder.Select(step => new OnboardingStepDto
+            steps = stepOrder.Select(step => new OnboardingStepDto
             {
                 StepNumber = step.StepNumber,
                 StepName = step.StepName,

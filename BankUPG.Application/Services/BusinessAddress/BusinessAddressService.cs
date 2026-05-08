@@ -282,7 +282,7 @@ namespace BankUPG.Application.Services.BusinessAddress
             var connectPlatformSteps = await BuildConnectPlatformStepsAsync(mid);
             var merchant = await _context.Merchants.AsNoTracking().FirstOrDefaultAsync(m => m.Mid == mid);
 
-            var steps = stepOrder.Select(step => new OnboardingStepDto
+            steps = stepOrder.Select(step => new OnboardingStepDto
             {
                 StepNumber = step.StepNumber,
                 StepName = step.StepName,
