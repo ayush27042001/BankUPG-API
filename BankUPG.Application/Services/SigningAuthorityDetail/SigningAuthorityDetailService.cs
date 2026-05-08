@@ -40,6 +40,8 @@ namespace BankUPG.Application.Services.SigningAuthorityDetail
             if (detail == null)
                 return null;
 
+            var isServiceAgreementSubmitted = await _context.ServiceAgreements.AnyAsync(sa => sa.Mid == merchant.Mid);
+
             return new SigningAuthorityDetailResponse
             {
                 SigningAuthorityDetailId = detail.SigningAuthorityDetailId,
@@ -48,7 +50,10 @@ namespace BankUPG.Application.Services.SigningAuthorityDetail
                 SigningAuthorityEmail = detail.SigningAuthorityEmail,
                 SigningAuthorityPan = detail.SigningAuthorityPan,
                 PepstatusId = detail.PepstatusId,
-                PepstatusName = detail.Pepstatus?.StatusName
+                PepstatusName = detail.Pepstatus?.StatusName,
+                IsOnboardingCompleted = merchant.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant.IsOnboardingRejected ?? false,
+                IsServiceAgreementSubmitted = isServiceAgreementSubmitted
             };
         }
 
@@ -256,7 +261,8 @@ namespace BankUPG.Application.Services.SigningAuthorityDetail
                 StepNumber = currentStepIndex,
                 StepName = currentStepName,
                 IsCompleted = allCompleted,
-                IsOnboardingCompleted = merchant?.IsOnboardingCompleted ?? false,
+                IsOnboardingCompleted = merchant.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant.IsOnboardingRejected ?? false,
                 IsServiceAgreementSubmitted = isServiceAgreementSubmitted,
                 Steps = steps
             };

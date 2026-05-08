@@ -615,6 +615,7 @@ namespace BankUPG.Application.Services.Registration
                 StepName = currentStepName,
                 IsCompleted = allCompleted,
                 IsOnboardingCompleted = merchant?.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant?.IsOnboardingRejected ?? false,
                 IsServiceAgreementSubmitted = isServiceAgreementSubmitted,
                 Steps = steps
             };

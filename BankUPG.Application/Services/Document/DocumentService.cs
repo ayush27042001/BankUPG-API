@@ -470,6 +470,7 @@ namespace BankUPG.Application.Services.Document
                 StepName = currentStepName,
                 IsCompleted = allCompleted,
                 IsOnboardingCompleted = merchant?.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant?.IsOnboardingRejected ?? false,
                 IsServiceAgreementSubmitted = isServiceAgreementSubmitted,
                 Steps = steps
             };

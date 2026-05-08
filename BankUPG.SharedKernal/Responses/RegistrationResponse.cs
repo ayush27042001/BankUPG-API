@@ -26,6 +26,7 @@ namespace BankUPG.SharedKernal.Responses
         public string StepName { get; set; } = string.Empty;
         public bool IsCompleted { get; set; }
         public bool IsOnboardingCompleted { get; set; }
+        public bool IsOnboardingRejected { get; set; }
         public bool IsServiceAgreementSubmitted { get; set; }
         public List<OnboardingStepDto> Steps { get; set; } = new();
     }
@@ -109,6 +110,9 @@ namespace BankUPG.SharedKernal.Responses
         public int BusinessEntityTypeId { get; set; }
         public string EntityName { get; set; } = string.Empty;
         public string? Description { get; set; }
+        public bool IsOnboardingCompleted { get; set; }
+        public bool IsOnboardingRejected { get; set; }
+        public bool IsServiceAgreementSubmitted { get; set; }
     }
 
     public class BusinessEntitySavedResponse
@@ -129,6 +133,9 @@ namespace BankUPG.SharedKernal.Responses
         public string? CkycIdentifier { get; set; }
         public bool ConsentGiven { get; set; }
         public DateTime? ConsentDate { get; set; }
+        public bool IsOnboardingCompleted { get; set; }
+        public bool IsOnboardingRejected { get; set; }
+        public bool IsServiceAgreementSubmitted { get; set; }
     }
 
     public class PhoneCkycSavedResponse
@@ -170,6 +177,9 @@ namespace BankUPG.SharedKernal.Responses
         public string? CategoryName { get; set; }
         public int? BusinessSubCategoryId { get; set; }
         public string? SubCategoryName { get; set; }
+        public bool IsOnboardingCompleted { get; set; }
+        public bool IsOnboardingRejected { get; set; }
+        public bool IsServiceAgreementSubmitted { get; set; }
     }
 
     public class BusinessCategorySavedResponse
@@ -191,6 +201,9 @@ namespace BankUPG.SharedKernal.Responses
         public decimal? ExpectedSalesPerMonth { get; set; }
         public bool? HasGstin { get; set; }
         public string? Gstin { get; set; }
+        public bool IsOnboardingCompleted { get; set; }
+        public bool IsOnboardingRejected { get; set; }
+        public bool IsServiceAgreementSubmitted { get; set; }
     }
 
     public class BusinessDetailsSavedResponse
@@ -256,6 +269,9 @@ namespace BankUPG.SharedKernal.Responses
         public DateTime? AgreementDate { get; set; }
         public bool IsAccepted { get; set; }
         public DateTime? SubmittedDate { get; set; }
+        public bool IsOnboardingCompleted { get; set; }
+        public bool IsOnboardingRejected { get; set; }
+        public bool IsServiceAgreementSubmitted { get; set; }
     }
 
     public class ServiceAgreementSavedResponse
@@ -277,6 +293,9 @@ namespace BankUPG.SharedKernal.Responses
         public string? WebsiteAppUrl { get; set; }
         public string? AndroidAppUrl { get; set; }
         public string? IosAppUrl { get; set; }
+        public bool IsOnboardingCompleted { get; set; }
+        public bool IsOnboardingRejected { get; set; }
+        public bool IsServiceAgreementSubmitted { get; set; }
     }
 
     public class ConnectPlatformSavedResponse
@@ -301,6 +320,9 @@ namespace BankUPG.SharedKernal.Responses
         public string SigningAuthorityPan { get; set; } = string.Empty;
         public int PepstatusId { get; set; }
         public string? PepstatusName { get; set; }
+        public bool IsOnboardingCompleted { get; set; }
+        public bool IsOnboardingRejected { get; set; }
+        public bool IsServiceAgreementSubmitted { get; set; }
     }
 
     public class SigningAuthorityDetailSavedResponse
@@ -340,6 +362,9 @@ namespace BankUPG.SharedKernal.Responses
         public string? OperatingState { get; set; }
         public string? OperatingPostalCode { get; set; }
         public string? OperatingCountry { get; set; }
+        public bool IsOnboardingCompleted { get; set; }
+        public bool IsOnboardingRejected { get; set; }
+        public bool IsServiceAgreementSubmitted { get; set; }
     }
 
     public class BusinessAddressSavedResponse

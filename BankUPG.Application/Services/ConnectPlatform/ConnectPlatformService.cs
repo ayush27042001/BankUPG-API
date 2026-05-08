@@ -45,13 +45,18 @@ namespace BankUPG.Application.Services.ConnectPlatform
                 return null;
             }
 
+            var isServiceAgreementSubmitted = await _context.ServiceAgreements.AnyAsync(sa => sa.Mid == merchant.Mid);
+
             return new ConnectPlatformResponse
             {
                 Mid = merchant.Mid,
                 PaymentCollectionPreference = detail.PaymentCollectionPreference,
                 WebsiteAppUrl = detail.WebsiteAppUrl,
                 AndroidAppUrl = detail.AndroidAppUrl,
-                IosAppUrl = detail.IOsappUrl
+                IosAppUrl = detail.IOsappUrl,
+                IsOnboardingCompleted = merchant.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant.IsOnboardingRejected ?? false,
+                IsServiceAgreementSubmitted = isServiceAgreementSubmitted
             };
         }
 
@@ -320,7 +325,8 @@ namespace BankUPG.Application.Services.ConnectPlatform
                 StepNumber = currentStepIndex,
                 StepName = currentStepName,
                 IsCompleted = allCompleted,
-                IsOnboardingCompleted = merchant?.IsOnboardingCompleted ?? false,
+                IsOnboardingCompleted = merchant.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant.IsOnboardingRejected ?? false,
                 IsServiceAgreementSubmitted = isServiceAgreementSubmitted,
                 Steps = steps
             };

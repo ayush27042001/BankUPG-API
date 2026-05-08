@@ -44,12 +44,17 @@ namespace BankUPG.Application.Services.BusinessDetails
             if (merchant.ExpectedSalesPerMonth == null && merchant.HasGstin == null)
                 return null;
 
+            var isServiceAgreementSubmitted = await _context.ServiceAgreements.AnyAsync(sa => sa.Mid == merchant.Mid);
+
             return new BusinessDetailsResponse
             {
                 Mid = merchant.Mid,
                 ExpectedSalesPerMonth = merchant.ExpectedSalesPerMonth,
                 HasGstin = merchant.HasGstin,
-                Gstin = merchant.Gstin
+                Gstin = merchant.Gstin,
+                IsOnboardingCompleted = merchant.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant.IsOnboardingRejected ?? false,
+                IsServiceAgreementSubmitted = isServiceAgreementSubmitted
             };
         }
 
@@ -273,7 +278,8 @@ namespace BankUPG.Application.Services.BusinessDetails
                 StepNumber = currentStepIndex,
                 StepName = currentStepName,
                 IsCompleted = allCompleted,
-                IsOnboardingCompleted = merchant?.IsOnboardingCompleted ?? false,
+                IsOnboardingCompleted = merchant.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant.IsOnboardingRejected ?? false,
                 IsServiceAgreementSubmitted = isServiceAgreementSubmitted,
                 Steps = steps
             };

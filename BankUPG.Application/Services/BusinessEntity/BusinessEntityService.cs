@@ -48,12 +48,17 @@ namespace BankUPG.Application.Services.BusinessEntity
             if (merchant == null || merchant.BusinessEntityTypeId == null)
                 return null;
 
+            var isServiceAgreementSubmitted = await _context.ServiceAgreements.AnyAsync(sa => sa.Mid == merchant.Mid);
+
             return new BusinessEntityResponse
             {
                 Mid = merchant.Mid,
                 BusinessEntityTypeId = merchant.BusinessEntityTypeId.Value,
                 EntityName = merchant.BusinessEntityType?.EntityName ?? string.Empty,
-                Description = merchant.BusinessEntityType?.Description
+                Description = merchant.BusinessEntityType?.Description,
+                IsOnboardingCompleted = merchant.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant.IsOnboardingRejected ?? false,
+                IsServiceAgreementSubmitted = isServiceAgreementSubmitted
             };
         }
 
@@ -249,7 +254,8 @@ namespace BankUPG.Application.Services.BusinessEntity
                 StepNumber = currentStepIndex,
                 StepName = currentStepName,
                 IsCompleted = allCompleted,
-                IsOnboardingCompleted = merchant?.IsOnboardingCompleted ?? false,
+                IsOnboardingCompleted = merchant.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant.IsOnboardingRejected ?? false,
                 IsServiceAgreementSubmitted = isServiceAgreementSubmitted,
                 Steps = steps
             };

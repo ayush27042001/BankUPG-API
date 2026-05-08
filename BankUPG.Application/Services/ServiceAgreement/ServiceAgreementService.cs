@@ -43,6 +43,8 @@ namespace BankUPG.Application.Services.ServiceAgreement
                 return null;
             }
 
+            var isServiceAgreementSubmitted = await _context.ServiceAgreements.AnyAsync(sa => sa.Mid == merchant.Mid);
+
             return new ServiceAgreementResponse
             {
                 ServiceAgreementId = agreement.ServiceAgreementId,
@@ -50,7 +52,10 @@ namespace BankUPG.Application.Services.ServiceAgreement
                 SignatureData = agreement.SignatureData,
                 AgreementDate = agreement.AgreementDate,
                 IsAccepted = agreement.IsAccepted,
-                SubmittedDate = agreement.SubmittedDate
+                SubmittedDate = agreement.SubmittedDate,
+                IsOnboardingCompleted = merchant.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant.IsOnboardingRejected ?? false,
+                IsServiceAgreementSubmitted = isServiceAgreementSubmitted
             };
         }
 
@@ -260,7 +265,8 @@ namespace BankUPG.Application.Services.ServiceAgreement
                 StepNumber = currentStepIndex,
                 StepName = currentStepName,
                 IsCompleted = allCompleted,
-                IsOnboardingCompleted = merchant?.IsOnboardingCompleted ?? false,
+                IsOnboardingCompleted = merchant.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant.IsOnboardingRejected ?? false,
                 IsServiceAgreementSubmitted = isServiceAgreementSubmitted,
                 Steps = steps
             };
