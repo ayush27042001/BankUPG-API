@@ -9,16 +9,18 @@ namespace BankUPG.SharedKernal.Responses
         public bool IsMobileVerified { get; set; }
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
-        
+
         // Refresh token for token renewal
         public string? RefreshToken { get; set; }
         public DateTime? RefreshTokenExpiration { get; set; }
-        
+
         // Onboarding status - to redirect user to correct step
         public int? OnboardingStatusId { get; set; }
         public string? CurrentStepName { get; set; }
         public string? FormStep { get; set; }
         public int? Step { get; set; }
+        public bool IsOnboardingCompleted { get; set; }
+        public bool IsServiceAgreementSubmitted { get; set; }
         public OnboardingStatusDto? OnboardingStatus { get; set; }
     }
 
