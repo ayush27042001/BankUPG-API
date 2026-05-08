@@ -299,4 +299,16 @@ namespace BankUPG.SharedKernal.Requests
         [MaxLength(100, ErrorMessage = "Operating country cannot exceed 100 characters")]
         public string? OperatingCountry { get; set; }
     }
+
+    public class SaveServiceAgreementRequest
+    {
+        [Required(ErrorMessage = "Signature data is required")]
+        public string SignatureData { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Agreement date is required")]
+        public DateTime AgreementDate { get; set; }
+
+        [Required(ErrorMessage = "Acceptance confirmation is required")]
+        public bool IsAccepted { get; set; }
+    }
 }

@@ -33,6 +33,8 @@ public partial class Merchant
 
     public bool? IsActive { get; set; }
 
+    public bool? IsOnboardingCompleted { get; set; }
+
     public DateTime? CreatedDate { get; set; }
 
     public DateTime? UpdatedDate { get; set; }
@@ -66,4 +68,6 @@ public partial class Merchant
     public virtual VideoKycdetail? VideoKycdetail { get; set; }
 
     public virtual WebsiteAppDetail? WebsiteAppDetail { get; set; }
+
+    public virtual ServiceAgreement? ServiceAgreement { get; set; }
 }

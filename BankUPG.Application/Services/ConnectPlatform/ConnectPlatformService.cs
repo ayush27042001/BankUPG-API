@@ -160,9 +160,7 @@ namespace BankUPG.Application.Services.ConnectPlatform
                 "Phone CKYC",
                 "Business Category",
                 "Share Business Details",
-                "Connect Platform",
-                "Upload Documents",
-                "Service Agreement"
+                "Connect Platform"
             };
 
             var completedSteps = await _context.OnboardingStepTrackings
@@ -188,7 +186,7 @@ namespace BankUPG.Application.Services.ConnectPlatform
             if (!foundIncomplete)
             {
                 currentStepName = "Completed";
-                stepIndex = 9;
+                stepIndex = 7;
             }
 
             string formStep = currentStepName switch
@@ -198,14 +196,62 @@ namespace BankUPG.Application.Services.ConnectPlatform
                 "Phone CKYC" => "PhoneCKYCCompletedBusinessCategoryPending",
                 "Business Category" => "BusinessCategoryCompletedShareDetailsPending",
                 "Share Business Details" => "ShareDetailsCompletedConnectPlatformPending",
-                "Connect Platform" => "ConnectPlatformCompletedUploadDocsPending",
-                "Upload Documents" => "UploadDocsCompletedServiceAgreementPending",
-                "Service Agreement" => "ServiceAgreementCompleted",
+                "Connect Platform" => "ConnectPlatformCompleted",
                 "Completed" => "RegistrationCompleted",
-                _ => "ConnectPlatformCompletedUploadDocsPending"
+                _ => "ConnectPlatformCompleted"
             };
 
             return (currentStepName, formStep, stepIndex);
+        }
+
+        private async Task<ConnectPlatformStepsDto> BuildConnectPlatformStepsAsync(int mid)
+        {
+            var connectPlatformStepOrder = new[]
+            {
+                new { StepNumber = 1, StepName = "Connect Mobile App or Website", StepKey = "CONNECT_MOBILE_APP_OR_WEBSITE" },
+                new { StepNumber = 2, StepName = "Share Bank Account Details", StepKey = "SHARE_BANK_ACCOUNT_DETAILS" },
+                new { StepNumber = 3, StepName = "Signing Authority Details", StepKey = "SIGNING_AUTHORITY_DETAILS" },
+                new { StepNumber = 4, StepName = "Verify Business Address", StepKey = "VERIFY_BUSINESS_ADDRESS" },
+                new { StepNumber = 5, StepName = "Complete Video KYC", StepKey = "COMPLETE_VIDEO_KYC" },
+                new { StepNumber = 6, StepName = "Service Agreement", StepKey = "SERVICE_AGREEMENT" }
+            };
+
+            var completionMap = new Dictionary<string, bool>
+            {
+                { "CONNECT_MOBILE_APP_OR_WEBSITE", await _context.WebsiteAppDetails.AnyAsync(w => w.Mid == mid) },
+                { "SHARE_BANK_ACCOUNT_DETAILS", await _context.BankAccountDetails.AnyAsync(b => b.Mid == mid) },
+                { "SIGNING_AUTHORITY_DETAILS", await _context.SigningAuthorityDetails.AnyAsync(s => s.Mid == mid) },
+                { "VERIFY_BUSINESS_ADDRESS", await _context.BusinessAddressDetails.AnyAsync(b => b.Mid == mid) },
+                { "COMPLETE_VIDEO_KYC", await _context.VideoKycdetails.AnyAsync(v => v.Mid == mid && v.VideoKycstatus == "Completed") },
+                { "SERVICE_AGREEMENT", await _context.ServiceAgreements.AnyAsync(sa => sa.Mid == mid) }
+            };
+
+            int currentStepNumber = 7;
+            bool allCompleted = true;
+
+            foreach (var step in connectPlatformStepOrder)
+            {
+                if (!completionMap[step.StepKey])
+                {
+                    currentStepNumber = step.StepNumber;
+                    allCompleted = false;
+                    break;
+                }
+            }
+
+            return new ConnectPlatformStepsDto
+            {
+                CurrentStep = currentStepNumber,
+                TotalSteps = 6,
+                Steps = connectPlatformStepOrder.Select(s => new ConnectPlatformStepDto
+                {
+                    StepNumber = s.StepNumber,
+                    StepName = s.StepName,
+                    StepKey = s.StepKey,
+                    IsCompleted = completionMap[s.StepKey],
+                    IsActive = s.StepNumber == currentStepNumber && !allCompleted
+                }).ToList()
+            };
         }
 
         private async Task<OnboardingStatusDto> BuildOnboardingStatusAsync(int mid)
@@ -217,9 +263,7 @@ namespace BankUPG.Application.Services.ConnectPlatform
                 new { StepNumber = 3, StepName = "Phone CKYC", StepKey = "PHONE_CKYC" },
                 new { StepNumber = 4, StepName = "Business Category", StepKey = "BUSINESS_CATEGORY" },
                 new { StepNumber = 5, StepName = "Share Business Details", StepKey = "SHARE_BUSINESS_DETAILS" },
-                new { StepNumber = 6, StepName = "Connect Platform", StepKey = "CONNECT_PLATFORM" },
-                new { StepNumber = 7, StepName = "Upload Documents", StepKey = "UPLOAD_DOCUMENTS" },
-                new { StepNumber = 8, StepName = "Service Agreement", StepKey = "SERVICE_AGREEMENT" }
+                new { StepNumber = 6, StepName = "Connect Platform", StepKey = "CONNECT_PLATFORM" }
             };
 
             var completedSteps = await _context.OnboardingStepTrackings
@@ -244,7 +288,7 @@ namespace BankUPG.Application.Services.ConnectPlatform
 
             if (allCompleted)
             {
-                currentStepIndex = 9;
+                currentStepIndex = 7;
                 currentStepName = "Completed";
             }
 
@@ -257,12 +301,19 @@ namespace BankUPG.Application.Services.ConnectPlatform
                 IsActive = step.StepName == currentStepName
             }).ToList();
 
+            var isServiceAgreementSubmitted = await _context.ServiceAgreements.AnyAsync(sa => sa.Mid == mid);
+            var connectPlatformSteps = await BuildConnectPlatformStepsAsync(mid);
+            var merchant = await _context.Merchants.AsNoTracking().FirstOrDefaultAsync(m => m.Mid == mid);
+
             return new OnboardingStatusDto
             {
                 StepNumber = currentStepIndex,
                 StepName = currentStepName,
                 IsCompleted = allCompleted,
-                Steps = steps
+                IsOnboardingCompleted = merchant?.IsOnboardingCompleted ?? false,
+                IsServiceAgreementSubmitted = isServiceAgreementSubmitted,
+                Steps = steps,
+                ConnectPlatformSteps = connectPlatformSteps
             };
         }
     }
