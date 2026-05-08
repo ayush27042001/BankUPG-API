@@ -185,7 +185,7 @@ namespace BankUPG.SharedKernal.Requests
         public string? AccountType { get; set; }
     }
 
-    public class SaveConnectPlatformRequest
+    public class SaveConnectPlatformRequest : IValidatableObject
     {
         [Required(ErrorMessage = "Payment collection preference is required")]
         [RegularExpression(@"^(ON_MY_WEBSITE_APP|WITHOUT_WEBSITE_APP)$",
@@ -203,6 +203,17 @@ namespace BankUPG.SharedKernal.Requests
         [Url(ErrorMessage = "Invalid iOS app URL format")]
         [MaxLength(500, ErrorMessage = "iOS App URL cannot exceed 500 characters")]
         public string? IosAppUrl { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (PaymentCollectionPreference == "ON_MY_WEBSITE_APP" &&
+                string.IsNullOrWhiteSpace(WebsiteAppUrl))
+            {
+                yield return new ValidationResult(
+                    "Website/App URL is required when payment collection preference is 'On my website/app'.",
+                    new[] { nameof(WebsiteAppUrl) });
+            }
+        }
     }
 
     public class SaveSigningAuthorityDetailRequest
