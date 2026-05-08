@@ -20,6 +20,7 @@ namespace BankUPG.SharedKernal.Responses
         public string? FormStep { get; set; }
         public int? Step { get; set; }
         public bool IsOnboardingCompleted { get; set; }
+        public bool IsOnboardingRejected { get; set; }
         public bool IsServiceAgreementSubmitted { get; set; }
         public OnboardingStatusDto? OnboardingStatus { get; set; }
     }

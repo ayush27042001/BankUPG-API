@@ -35,6 +35,8 @@ public partial class Merchant
 
     public bool? IsOnboardingCompleted { get; set; }
 
+    public bool? IsOnboardingRejected { get; set; }
+
     public DateTime? CreatedDate { get; set; }
 
     public DateTime? UpdatedDate { get; set; }

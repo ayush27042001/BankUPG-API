@@ -99,13 +99,18 @@ namespace BankUPG.Application.Services.PhoneCkyc
             if (merchant == null || merchant.User == null)
                 return null;
 
+            var isServiceAgreementSubmitted = await _context.ServiceAgreements.AnyAsync(sa => sa.Mid == merchant.Mid);
+
             return new PhoneCkycResponse
             {
                 Mid = merchant.Mid,
                 MobileNumber = $"+91{merchant.User.MobileNumber}",
                 CkycIdentifier = merchant.Ckycidentifier,
                 ConsentGiven = merchant.CkycconsentGiven ?? false,
-                ConsentDate = merchant.CkycconsentDate
+                ConsentDate = merchant.CkycconsentDate,
+                IsOnboardingCompleted = merchant.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant.IsOnboardingRejected ?? false,
+                IsServiceAgreementSubmitted = isServiceAgreementSubmitted
             };
         }
 
@@ -301,7 +306,8 @@ namespace BankUPG.Application.Services.PhoneCkyc
                 StepNumber = currentStepIndex,
                 StepName = currentStepName,
                 IsCompleted = allCompleted,
-                IsOnboardingCompleted = merchant?.IsOnboardingCompleted ?? false,
+                IsOnboardingCompleted = merchant.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant.IsOnboardingRejected ?? false,
                 IsServiceAgreementSubmitted = isServiceAgreementSubmitted,
                 Steps = steps
             };

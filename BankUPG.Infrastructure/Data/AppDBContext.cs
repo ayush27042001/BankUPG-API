@@ -425,6 +425,9 @@ public partial class AppDBContext : DbContext
             entity.Property(e => e.IsOnboardingCompleted)
                 .HasDefaultValue(false)
                 .HasColumnName("IsOnboardingCompleted");
+            entity.Property(e => e.IsOnboardingRejected)
+                .HasDefaultValue(false)
+                .HasColumnName("IsOnboardingRejected");
             entity.Property(e => e.OnboardingStatusId)
                 .HasDefaultValue(1)
                 .HasColumnName("OnboardingStatusID");

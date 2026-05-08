@@ -39,6 +39,8 @@ namespace BankUPG.Application.Services.BusinessAddress
             if (addressDetail == null)
                 return null;
 
+            var isServiceAgreementSubmitted = await _context.ServiceAgreements.AnyAsync(sa => sa.Mid == merchant.Mid);
+
             return new BusinessAddressResponse
             {
                 BusinessAddressDetailId = addressDetail.BusinessAddressDetailId,
@@ -55,7 +57,10 @@ namespace BankUPG.Application.Services.BusinessAddress
                 OperatingCity = addressDetail.OperatingCity,
                 OperatingState = addressDetail.OperatingState,
                 OperatingPostalCode = addressDetail.OperatingPostalCode,
-                OperatingCountry = addressDetail.OperatingCountry
+                OperatingCountry = addressDetail.OperatingCountry,
+                IsOnboardingCompleted = merchant.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant.IsOnboardingRejected ?? false,
+                IsServiceAgreementSubmitted = isServiceAgreementSubmitted
             };
         }
 
@@ -297,7 +302,8 @@ namespace BankUPG.Application.Services.BusinessAddress
                 StepNumber = currentStepIndex,
                 StepName = currentStepName,
                 IsCompleted = allCompleted,
-                IsOnboardingCompleted = merchant?.IsOnboardingCompleted ?? false,
+                IsOnboardingCompleted = merchant.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant.IsOnboardingRejected ?? false,
                 IsServiceAgreementSubmitted = isServiceAgreementSubmitted,
                 Steps = steps
             };

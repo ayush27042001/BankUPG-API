@@ -153,6 +153,7 @@ namespace BankUPG.API.Controllers
                     FormStep = formStep,
                     Step = step,
                     IsOnboardingCompleted = onboardingStatus.IsOnboardingCompleted,
+                    IsOnboardingRejected = onboardingStatus.IsOnboardingRejected,
                     IsServiceAgreementSubmitted = onboardingStatus.IsServiceAgreementSubmitted,
                     OnboardingStatus = onboardingStatus
                 };
@@ -315,6 +316,7 @@ namespace BankUPG.API.Controllers
                     FormStep = formStep,
                     Step = step,
                     IsOnboardingCompleted = onboardingStatus.IsOnboardingCompleted,
+                    IsOnboardingRejected = onboardingStatus.IsOnboardingRejected,
                     IsServiceAgreementSubmitted = onboardingStatus.IsServiceAgreementSubmitted,
                     OnboardingStatus = onboardingStatus
                 };
@@ -604,6 +606,7 @@ namespace BankUPG.API.Controllers
                 StepName = currentStepName,
                 IsCompleted = allCompleted,
                 IsOnboardingCompleted = merchant?.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant?.IsOnboardingRejected ?? false,
                 IsServiceAgreementSubmitted = await _context.ServiceAgreements.AnyAsync(sa => sa.Mid == mid),
                 Steps = steps
             };

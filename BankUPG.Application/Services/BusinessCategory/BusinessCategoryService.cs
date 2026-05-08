@@ -62,13 +62,18 @@ namespace BankUPG.Application.Services.BusinessCategory
             if (merchant == null || merchant.BusinessCategoryId == null)
                 return null;
 
+            var isServiceAgreementSubmitted = await _context.ServiceAgreements.AnyAsync(sa => sa.Mid == merchant.Mid);
+
             return new MerchantBusinessCategoryResponse
             {
                 Mid = merchant.Mid,
                 BusinessCategoryId = merchant.BusinessCategoryId,
                 CategoryName = merchant.BusinessCategory?.CategoryName,
                 BusinessSubCategoryId = merchant.BusinessSubCategoryId,
-                SubCategoryName = merchant.BusinessSubCategory?.SubCategoryName
+                SubCategoryName = merchant.BusinessSubCategory?.SubCategoryName,
+                IsOnboardingCompleted = merchant.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant.IsOnboardingRejected ?? false,
+                IsServiceAgreementSubmitted = isServiceAgreementSubmitted
             };
         }
 
@@ -271,7 +276,8 @@ namespace BankUPG.Application.Services.BusinessCategory
                 StepNumber = currentStepIndex,
                 StepName = currentStepName,
                 IsCompleted = allCompleted,
-                IsOnboardingCompleted = merchant?.IsOnboardingCompleted ?? false,
+                IsOnboardingCompleted = merchant.IsOnboardingCompleted ?? false,
+                IsOnboardingRejected = merchant.IsOnboardingRejected ?? false,
                 IsServiceAgreementSubmitted = isServiceAgreementSubmitted,
                 Steps = steps
             };
