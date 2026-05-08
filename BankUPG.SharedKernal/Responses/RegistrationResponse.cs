@@ -28,7 +28,6 @@ namespace BankUPG.SharedKernal.Responses
         public bool IsOnboardingCompleted { get; set; }
         public bool IsServiceAgreementSubmitted { get; set; }
         public List<OnboardingStepDto> Steps { get; set; } = new();
-        public ConnectPlatformStepsDto? ConnectPlatformSteps { get; set; }
     }
 
     public class ConnectPlatformStepsDto
@@ -54,6 +53,7 @@ namespace BankUPG.SharedKernal.Responses
         public string StepKey { get; set; } = string.Empty;
         public bool IsCompleted { get; set; }
         public bool IsActive { get; set; }
+        public ConnectPlatformStepsDto? ConnectPlatformSteps { get; set; }
     }
 
     public class OtpVerificationResponse

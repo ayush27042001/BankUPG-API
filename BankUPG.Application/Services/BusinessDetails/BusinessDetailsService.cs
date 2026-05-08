@@ -258,6 +258,16 @@ namespace BankUPG.Application.Services.BusinessDetails
             var connectPlatformSteps = await BuildConnectPlatformStepsAsync(mid);
             var merchant = await _context.Merchants.AsNoTracking().FirstOrDefaultAsync(m => m.Mid == mid);
 
+            var steps = stepOrder.Select(step => new OnboardingStepDto
+            {
+                StepNumber = step.StepNumber,
+                StepName = step.StepName,
+                StepKey = step.StepKey,
+                IsCompleted = step.StepName == "Connect Platform" ? connectPlatformSteps.Steps.All(s => s.IsCompleted) : completedSteps.Contains(step.StepName),
+                IsActive = step.StepName == currentStepName,
+                ConnectPlatformSteps = step.StepName == "Connect Platform" ? connectPlatformSteps : null
+            }).ToList();
+
             return new OnboardingStatusDto
             {
                 StepNumber = currentStepIndex,
@@ -265,8 +275,7 @@ namespace BankUPG.Application.Services.BusinessDetails
                 IsCompleted = allCompleted,
                 IsOnboardingCompleted = merchant?.IsOnboardingCompleted ?? false,
                 IsServiceAgreementSubmitted = isServiceAgreementSubmitted,
-                Steps = steps,
-                ConnectPlatformSteps = connectPlatformSteps
+                Steps = steps
             };
         }
 
