@@ -23,10 +23,12 @@ namespace BankUPG.API.Controllers
 
         private int GetUserId()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+
+            var userIdClaim = User.FindAll(ClaimTypes.NameIdentifier)
+                .FirstOrDefault(c => int.TryParse(c.Value, out _));
+            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
             {
-                throw new UnauthorizedAccessException("Invalid user token");
+                 throw new UnauthorizedAccessException("Invalid user token");
             }
             return userId;
         }
