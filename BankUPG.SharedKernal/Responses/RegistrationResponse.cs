@@ -236,6 +236,9 @@ namespace BankUPG.SharedKernal.Responses
         public string? AccountType { get; set; }
         public bool? IsVerified { get; set; }
         public DateTime? VerifiedDate { get; set; }
+        public bool IsOnboardingCompleted { get; set; }
+        public bool IsOnboardingRejected { get; set; }
+        public bool IsServiceAgreementSubmitted { get; set; }
     }
 
     public class BankAccountDetailSavedResponse
