@@ -171,8 +171,14 @@ jobs:
           timeout: 60000
           
       - name: Wait for app to shutdown
-        run: sleep 30
+        run: sleep 60
         
+      - name: Force delete main DLL to release lock
+        run: |
+          curl -u "${{ secrets.PLESK_FTP_USERNAME }}:${{ secrets.PLESK_FTP_PASSWORD }}" \
+            ftp://${{ secrets.PLESK_FTP_HOST }}:21/ \
+            -Q "DELE BankUPG.API.dll" || echo "DLL may not exist or already deleted"
+            
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
