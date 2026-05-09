@@ -7,6 +7,6 @@ namespace BankUPG.Application.Interfaces.BankAccountDetail
     {
         Task<BankAccountDetailResponse?> GetBankAccountDetailAsync(int userId);
         Task<BankAccountDetailSavedResponse> SaveBankAccountDetailAsync(int userId, SaveBankAccountDetailRequest request);
-        Task<BankAccountVerifyResult> VerifyBankAccountAsync(int userId);
+        Task<BankAccountVerifyResult> VerifyBankAccountAsync(VerifyBankAccountRequest request);
     }
 }
