@@ -168,10 +168,10 @@ jobs:
             **/*.xml
             **/*.config
             **/runtimes/**
-          timeout: 60000
+          timeout: 120000
           
       - name: Wait for app to shutdown
-        run: sleep 60
+        run: sleep 30
         
       - name: Force delete main DLL to release lock
         run: |
@@ -197,7 +197,7 @@ jobs:
             **/*.xml
             **/*.pdb
             web.config.bak
-          timeout: 120000
+          timeout: 300000
           
       - name: Delete app_offline.htm via FTP
         run: |
