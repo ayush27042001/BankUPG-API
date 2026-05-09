@@ -144,40 +144,15 @@ jobs:
           </html>
           EOF
           
-      - name: Delete existing app_offline.htm via FTP
+      - name: Stop Application Pool via Plesk API
         run: |
-          curl -u "${{ secrets.PLESK_FTP_USERNAME }}:${{ secrets.PLESK_FTP_PASSWORD }}" \
-            ftp://${{ secrets.PLESK_FTP_HOST }}:21/ \
-            -Q "DELE app_offline.htm" || echo "File may not exist"
+          curl -X POST "https://${{ secrets.PLESK_HOST }}:8443/api/v2/domains/${{ secrets.PLESK_DOMAIN }}/app-pools/stop" \
+            -u "${{ secrets.PLESK_USERNAME }}:${{ secrets.PLESK_PASSWORD }}" \
+            -H "Content-Type: application/json" \
+            --insecure || echo "Failed to stop app pool, continuing anyway"
             
-      - name: Upload app_offline.htm via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.PLESK_FTP_HOST }}
-          username: ${{ secrets.PLESK_FTP_USERNAME }}
-          password: ${{ secrets.PLESK_FTP_PASSWORD }}
-          local-dir: ${{ env.PUBLISH_PATH }}/
-          server-dir: /
-          protocol: ftp
-          port: 21
-          exclude: |
-            **/*.dll
-            **/*.exe
-            **/*.json
-            **/*.pdb
-            **/*.xml
-            **/*.config
-            **/runtimes/**
-          timeout: 120000
-          
-      - name: Wait for app to shutdown
-        run: sleep 30
-        
-      - name: Force delete main DLL to release lock
-        run: |
-          curl -u "${{ secrets.PLESK_FTP_USERNAME }}:${{ secrets.PLESK_FTP_PASSWORD }}" \
-            ftp://${{ secrets.PLESK_FTP_HOST }}:21/ \
-            -Q "DELE BankUPG.API.dll" || echo "DLL may not exist or already deleted"
+      - name: Wait for app pool to stop
+        run: sleep 15
             
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -199,11 +174,12 @@ jobs:
             web.config.bak
           timeout: 300000
           
-      - name: Delete app_offline.htm via FTP
+      - name: Start Application Pool via Plesk API
         run: |
-          curl -u "${{ secrets.PLESK_FTP_USERNAME }}:${{ secrets.PLESK_FTP_PASSWORD }}" \
-            ftp://${{ secrets.PLESK_FTP_HOST }}:21/ \
-            -Q "DELE app_offline.htm" || echo "File may not exist or already deleted"
+          curl -X POST "https://${{ secrets.PLESK_HOST }}:8443/api/v2/domains/${{ secrets.PLESK_DOMAIN }}/app-pools/start" \
+            -u "${{ secrets.PLESK_USERNAME }}:${{ secrets.PLESK_PASSWORD }}" \
+            -H "Content-Type: application/json" \
+            --insecure || echo "Failed to start app pool"
             
       - name: Deployment Success Notification
         run: |
