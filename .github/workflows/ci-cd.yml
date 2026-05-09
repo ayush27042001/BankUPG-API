@@ -144,6 +144,12 @@ jobs:
           </html>
           EOF
           
+      - name: Delete existing app_offline.htm via FTP
+        run: |
+          curl -u "${{ secrets.PLESK_FTP_USERNAME }}:${{ secrets.PLESK_FTP_PASSWORD }}" \
+            ftp://${{ secrets.PLESK_FTP_HOST }}:21/ \
+            -Q "DELE app_offline.htm" || echo "File may not exist"
+            
       - name: Upload app_offline.htm via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -165,7 +171,7 @@ jobs:
           timeout: 60000
           
       - name: Wait for app to shutdown
-        run: sleep 10
+        run: sleep 30
         
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
