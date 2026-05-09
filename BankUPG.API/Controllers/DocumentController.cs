@@ -72,7 +72,7 @@ namespace BankUPG.API.Controllers
             }
         }
 
-        [HttpPost("update")]
+        [HttpPut("update")]
         [ProducesResponseType(typeof(ApiResponse<DocumentUploadResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
@@ -229,7 +229,7 @@ namespace BankUPG.API.Controllers
             }
         }
 
-        [HttpPost("delete/{documentUploadId}")]
+        [HttpDelete("delete/{documentUploadId}")]
         [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
