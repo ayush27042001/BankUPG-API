@@ -78,7 +78,7 @@ namespace BankUPG.Application.Services.Document
                 await request.File.CopyToAsync(stream);
             }
 
-            // Create document upload record
+            // Create document upload record /
             var documentUpload = new DocumentUpload
             {
                 Mid = merchant.Mid,
