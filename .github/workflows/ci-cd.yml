@@ -154,6 +154,7 @@ jobs:
           echo "app_offline.htm uploaded — application is now offline"
           
       - name: Stop Application Pool via Plesk API
+        continue-on-error: true
         run: |
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
             -X POST "https://${{ secrets.PLESK_HOST }}:8443/api/v2/domains/${{ secrets.PLESK_DOMAIN }}/app-pools/stop" \
@@ -198,6 +199,7 @@ jobs:
           
       - name: Start Application Pool via Plesk API
         if: always()
+        continue-on-error: true
         run: |
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
             -X POST "https://${{ secrets.PLESK_HOST }}:8443/api/v2/domains/${{ secrets.PLESK_DOMAIN }}/app-pools/start" \
