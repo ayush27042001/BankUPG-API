@@ -5,6 +5,7 @@ using BankUPG.Application.Interfaces.Cache;
 using BankUPG.SharedKernal.Requests;
 using BankUPG.SharedKernal.Responses;
 using BankUPG.SharedKernal.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -335,6 +336,73 @@ namespace BankUPG.API.Controllers
                 {
                     Success = false,
                     Message = "An error occurred while verifying OTP"
+                });
+            }
+        }
+
+        [HttpPost("logout")]
+        [Authorize]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<ApiResponse>> Logout([FromBody] LogoutRequest? request)
+        {
+            try
+            {
+                var userIdClaim = User.FindAll(ClaimTypes.NameIdentifier)
+                    .FirstOrDefault(c => int.TryParse(c.Value, out _));
+
+                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+                {
+                    return Unauthorized(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Invalid token"
+                    });
+                }
+
+                if (!string.IsNullOrEmpty(request?.RefreshToken))
+                {
+                    // Revoke the specific refresh token provided
+                    var token = await _context.RefreshTokens
+                        .FirstOrDefaultAsync(r => r.Token == request.RefreshToken && r.UserId == userId);
+
+                    if (token != null && token.IsActive)
+                    {
+                        token.IsRevoked = true;
+                        token.RevokedAt = DateTime.UtcNow;
+                    }
+                }
+                else
+                {
+                    // Revoke all active refresh tokens for the user
+                    var activeTokens = await _context.RefreshTokens
+                        .Where(r => r.UserId == userId && !r.IsRevoked)
+                        .ToListAsync();
+
+                    foreach (var token in activeTokens)
+                    {
+                        token.IsRevoked = true;
+                        token.RevokedAt = DateTime.UtcNow;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"User {userId} logged out successfully");
+
+                return Ok(new ApiResponse
+                {
+                    Success = true,
+                    Message = "Logged out successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during logout");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "An error occurred during logout"
                 });
             }
         }

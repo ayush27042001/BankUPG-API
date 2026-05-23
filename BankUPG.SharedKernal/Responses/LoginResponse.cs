@@ -31,6 +31,11 @@ namespace BankUPG.SharedKernal.Responses
         public string? ExpiredToken { get; set; }
     }
 
+    public class LogoutRequest
+    {
+        public string? RefreshToken { get; set; }
+    }
+
     public class RefreshTokenResponse
     {
         public string Token { get; set; } = string.Empty;
