@@ -488,13 +488,24 @@ namespace BankUPG.Application.Services.Document
                 new { StepNumber = 6, StepName = "Service Agreement", StepKey = "SERVICE_AGREEMENT" }
             };
 
+            var requiredDocTypeIds = await _context.DocumentTypes
+                .Where(dt => dt.IsRequired == true && dt.IsActive == true)
+                .Select(dt => dt.DocumentTypeId)
+                .ToListAsync();
+            var uploadedDocTypeIds = await _context.DocumentUploads
+                .Where(du => du.Mid == mid)
+                .Select(du => du.DocumentTypeId)
+                .Distinct()
+                .ToListAsync();
+            bool allRequiredDocsUploaded = requiredDocTypeIds.Count > 0 && requiredDocTypeIds.All(id => uploadedDocTypeIds.Contains(id));
+
             var completionMap = new Dictionary<string, bool>
             {
                 { "CONNECT_MOBILE_APP_OR_WEBSITE", await _context.WebsiteAppDetails.AnyAsync(w => w.Mid == mid) },
                 { "SHARE_BANK_ACCOUNT_DETAILS", await _context.BankAccountDetails.AnyAsync(b => b.Mid == mid) },
                 { "SIGNING_AUTHORITY_DETAILS", await _context.SigningAuthorityDetails.AnyAsync(s => s.Mid == mid) },
                 { "VERIFY_BUSINESS_ADDRESS", await _context.BusinessAddressDetails.AnyAsync(b => b.Mid == mid) },
-                { "COMPLETE_VIDEO_KYC", await _context.VideoKycdetails.AnyAsync(v => v.Mid == mid && v.VideoKycstatus == "Completed") },
+                { "COMPLETE_VIDEO_KYC", allRequiredDocsUploaded },
                 { "SERVICE_AGREEMENT", await _context.ServiceAgreements.AnyAsync(sa => sa.Mid == mid) }
             };
 
