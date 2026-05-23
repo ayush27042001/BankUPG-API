@@ -142,17 +142,31 @@ jobs:
             </div>
           </body>
           </html>
+          <!-- deploy: ${{ github.sha }} -->
           EOF
+          
+      - name: Upload app_offline.htm to take application offline
+        run: |
+          curl -s -T ${{ env.PUBLISH_PATH }}/app_offline.htm \
+            "ftp://${{ secrets.PLESK_FTP_HOST }}/app_offline.htm" \
+            --user "${{ secrets.PLESK_FTP_USERNAME }}:${{ secrets.PLESK_FTP_PASSWORD }}" \
+            --ftp-create-dirs
+          echo "app_offline.htm uploaded — application is now offline"
           
       - name: Stop Application Pool via Plesk API
         run: |
-          curl -X POST "https://${{ secrets.PLESK_HOST }}:8443/api/v2/domains/${{ secrets.PLESK_DOMAIN }}/app-pools/stop" \
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "https://${{ secrets.PLESK_HOST }}:8443/api/v2/domains/${{ secrets.PLESK_DOMAIN }}/app-pools/stop" \
             -u "${{ secrets.PLESK_USERNAME }}:${{ secrets.PLESK_PASSWORD }}" \
             -H "Content-Type: application/json" \
-            --insecure || echo "Failed to stop app pool, continuing anyway"
+            --insecure)
+          echo "Plesk API stop response: HTTP $HTTP_CODE"
+          if [[ "$HTTP_CODE" != "200" && "$HTTP_CODE" != "204" ]]; then
+            echo "Warning: Plesk API did not confirm app pool stop (HTTP $HTTP_CODE). Relying on app_offline.htm."
+          fi
             
-      - name: Wait for app pool to stop
-        run: sleep 15
+      - name: Wait for application pool to fully release file locks
+        run: sleep 30
             
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -174,12 +188,26 @@ jobs:
             web.config.bak
           timeout: 300000
           
-      - name: Start Application Pool via Plesk API
+      - name: Remove app_offline.htm to bring application back online
+        if: always()
         run: |
-          curl -X POST "https://${{ secrets.PLESK_HOST }}:8443/api/v2/domains/${{ secrets.PLESK_DOMAIN }}/app-pools/start" \
+          curl -s "ftp://${{ secrets.PLESK_FTP_HOST }}/" \
+            --user "${{ secrets.PLESK_FTP_USERNAME }}:${{ secrets.PLESK_FTP_PASSWORD }}" \
+            -Q "DELE app_offline.htm" || echo "app_offline.htm already removed or not found"
+          echo "app_offline.htm removed — application is back online"
+          
+      - name: Start Application Pool via Plesk API
+        if: always()
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "https://${{ secrets.PLESK_HOST }}:8443/api/v2/domains/${{ secrets.PLESK_DOMAIN }}/app-pools/start" \
             -u "${{ secrets.PLESK_USERNAME }}:${{ secrets.PLESK_PASSWORD }}" \
             -H "Content-Type: application/json" \
-            --insecure || echo "Failed to start app pool"
+            --insecure)
+          echo "Plesk API start response: HTTP $HTTP_CODE"
+          if [[ "$HTTP_CODE" != "200" && "$HTTP_CODE" != "204" ]]; then
+            echo "Warning: Plesk API did not confirm app pool start (HTTP $HTTP_CODE)."
+          fi
             
       - name: Deployment Success Notification
         run: |
