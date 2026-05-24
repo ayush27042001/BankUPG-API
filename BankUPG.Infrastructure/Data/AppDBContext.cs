@@ -63,6 +63,10 @@ public partial class AppDBContext : DbContext
 
     public virtual DbSet<ServiceAgreement> ServiceAgreements { get; set; }
 
+    public virtual DbSet<SuperAdmin> SuperAdmins { get; set; }
+
+    public virtual DbSet<SuperAdminRefreshToken> SuperAdminRefreshTokens { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Data Source=103.205.142.34,1433;Initial Catalog=BankuPG;Persist Security Info=True;User ID=sa;Password=zUG93NOh6WE7BQIS;TrustServerCertificate=True");
@@ -826,6 +830,59 @@ public partial class AppDBContext : DbContext
             entity.HasOne(d => d.MidNavigation).WithOne(p => p.ServiceAgreement)
                 .HasForeignKey<ServiceAgreement>(d => d.Mid)
                 .HasConstraintName("FK_ServiceAgreements_Merchants");
+        });
+
+        modelBuilder.Entity<SuperAdmin>(entity =>
+        {
+            entity.HasKey(e => e.AdminId).HasName("PK__SuperAdm__719FE48802A36FBE");
+
+            entity.ToTable("SuperAdmins");
+
+            entity.HasIndex(e => e.Username, "UQ__SuperAdm__Username").IsUnique();
+            entity.HasIndex(e => e.Email, "UQ__SuperAdm__Email").IsUnique();
+
+            entity.Property(e => e.AdminId).HasColumnName("AdminID");
+            entity.Property(e => e.Username).HasMaxLength(100);
+            entity.Property(e => e.Email).HasMaxLength(255);
+            entity.Property(e => e.PasswordHash).HasMaxLength(512);
+            entity.Property(e => e.Salt).HasMaxLength(256);
+            entity.Property(e => e.Role).HasMaxLength(50).HasDefaultValue("SuperAdmin");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.IsLocked).HasDefaultValue(false);
+            entity.Property(e => e.FailedLoginAttempts).HasDefaultValue(0);
+            entity.Property(e => e.LastLoginDate).HasColumnType("datetime");
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+        });
+
+        modelBuilder.Entity<SuperAdminRefreshToken>(entity =>
+        {
+            entity.HasKey(e => e.RefreshTokenId).HasName("PK__SuperAdm__RefreshToken");
+
+            entity.ToTable("SuperAdminRefreshTokens");
+
+            entity.HasIndex(e => e.Token, "UQ__SuperAdmRefreshT__Token").IsUnique();
+            entity.HasIndex(e => e.AdminId, "IX__SuperAdmRefreshT__AdminId");
+
+            entity.Property(e => e.RefreshTokenId).HasColumnName("RefreshTokenID");
+            entity.Property(e => e.AdminId).HasColumnName("AdminID");
+            entity.Property(e => e.Token).HasMaxLength(500);
+            entity.Property(e => e.ExpiresAt).HasColumnType("datetime");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.RevokedAt).HasColumnType("datetime");
+            entity.Property(e => e.IpAddress).HasMaxLength(50);
+            entity.Property(e => e.UserAgent).HasMaxLength(500);
+
+            entity.HasOne(d => d.Admin).WithMany(p => p.RefreshTokens)
+                .HasForeignKey(d => d.AdminId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_SuperAdminRefreshTokens_SuperAdmins");
         });
 
         OnModelCreatingPartial(modelBuilder);

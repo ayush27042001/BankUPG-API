@@ -96,6 +96,33 @@ namespace BankUPG.Application.Services.Auth
             }
         }
 
+        public string GenerateAdminToken(string username, string email, int adminId, string role)
+        {
+            var claims = new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, username),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(ClaimTypes.NameIdentifier, adminId.ToString()),
+                new Claim(ClaimTypes.Email, email),
+                new Claim(ClaimTypes.Role, role),
+                new Claim("AdminId", adminId.ToString()),
+                new Claim("Username", username)
+            };
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_appSettings.Jwt.Secret));
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: _appSettings.Jwt.Issuer,
+                audience: _appSettings.Jwt.Audience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(_appSettings.Jwt.ExpirationMinutes),
+                signingCredentials: credentials
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
         public string GenerateRefreshToken()
         {
             var randomBytes = new byte[64];
