@@ -132,8 +132,8 @@ builder.Services.AddCors(options =>
                 "capacitor://localhost",       // Capacitor apps
                 "ionic://localhost",           // Ionic apps
                 "https://banku.in",           // Production domain
-                "https://paymentgateway.banku.co.in/",           // Production domain
-                "https://www.paymentgateway.banku.co.in/",           // Production domain
+                "https://paymentgateway.banku.co.in",            // Production domain
+                "https://www.paymentgateway.banku.co.in",            // Production domain
                 "https://www.banku.in")       // Production www
             .AllowAnyMethod()
             .AllowAnyHeader()
