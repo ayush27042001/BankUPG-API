@@ -43,6 +43,9 @@ using System.Text;
 using System.IO.Compression;
 using Microsoft.AspNetCore.ResponseCompression;
 using BankUPG.Application.Services;
+using BankUPG.Application.Interfaces.Auth;
+using BankUPG.Application.Services.Auth;
+using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -87,6 +90,7 @@ builder.Services.AddScoped<IBusinessProofTypeMasterService, BusinessProofTypeMas
 builder.Services.AddScoped<IServiceAgreementService, ServiceAgreementService>();
 builder.Services.AddScoped<IBankAccountDetailService, BankAccountDetailService>();
 builder.Services.AddScoped<IStatusTrackerService, StatusTrackerService>();
+builder.Services.AddSingleton<ITokenBlocklistService, TokenBlocklistService>();
 
 // Add HttpClientFactory for external API calls
 builder.Services.AddHttpClient();
@@ -160,6 +164,20 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = appSettings.Jwt.Audience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(appSettings.Jwt.Secret)),
         ClockSkew = TimeSpan.Zero
+    };
+    options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+    {
+        OnTokenValidated = context =>
+        {
+            var blocklist = context.HttpContext.RequestServices
+                .GetRequiredService<ITokenBlocklistService>();
+            var jti = context.Principal?.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
+            if (!string.IsNullOrEmpty(jti) && blocklist.IsBlocklisted(jti))
+            {
+                context.Fail("Token has been revoked");
+            }
+            return Task.CompletedTask;
+        }
     };
 });
 

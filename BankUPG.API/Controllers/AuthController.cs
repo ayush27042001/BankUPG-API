@@ -1,6 +1,7 @@
 using BankUPG.Infrastructure.Data;
 using BankUPG.Infrastructure.Entities;
 using BankUPG.Application.Services.Auth;
+using BankUPG.Application.Interfaces.Auth;
 using BankUPG.Application.Interfaces.Cache;
 using BankUPG.SharedKernal.Requests;
 using BankUPG.SharedKernal.Responses;
@@ -8,6 +9,7 @@ using BankUPG.SharedKernal.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.JsonWebTokens;
 using System.Security.Claims;
 
 namespace BankUPG.API.Controllers
@@ -23,6 +25,7 @@ namespace BankUPG.API.Controllers
         private readonly OtpService _otpService;
         private readonly ILogger<AuthController> _logger;
         private readonly AppSettings _appSettings;
+        private readonly ITokenBlocklistService _tokenBlocklist;
 
         public AuthController(
             AppDBContext context,
@@ -30,7 +33,8 @@ namespace BankUPG.API.Controllers
             PasswordService passwordService,
             OtpService otpService,
             ILogger<AuthController> logger,
-            AppSettings appSettings)
+            AppSettings appSettings,
+            ITokenBlocklistService tokenBlocklist)
         {
             _context = context;
             _jwtService = jwtService;
@@ -38,6 +42,7 @@ namespace BankUPG.API.Controllers
             _otpService = otpService;
             _logger = logger;
             _appSettings = appSettings;
+            _tokenBlocklist = tokenBlocklist;
         }
 
         [HttpPost("login")]
@@ -358,6 +363,19 @@ namespace BankUPG.API.Controllers
                         Success = false,
                         Message = "Invalid token"
                     });
+                }
+
+                // Blocklist the current access token so it immediately returns 401
+                var jti = User.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
+                var expClaim = User.FindFirst(JwtRegisteredClaimNames.Exp)?.Value;
+                if (!string.IsNullOrEmpty(jti))
+                {
+                    var expiry = DateTime.UtcNow.AddMinutes(_appSettings.Jwt.ExpirationMinutes);
+                    if (long.TryParse(expClaim, out long expUnix))
+                    {
+                        expiry = DateTimeOffset.FromUnixTimeSeconds(expUnix).UtcDateTime;
+                    }
+                    _tokenBlocklist.Blocklist(jti, expiry);
                 }
 
                 if (!string.IsNullOrEmpty(request?.RefreshToken))
