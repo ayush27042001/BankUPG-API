@@ -10,6 +10,7 @@ BEGIN
         AdminID          INT            IDENTITY(1,1)  NOT NULL,
         Username         NVARCHAR(100)  NOT NULL,
         Email            NVARCHAR(255)  NOT NULL,
+        MobileNumber     NVARCHAR(20)   NULL,
         PasswordHash     NVARCHAR(512)  NOT NULL,
         Salt             NVARCHAR(256)  NOT NULL,
         Role             NVARCHAR(50)   NOT NULL  CONSTRAINT DF_SuperAdmins_Role     DEFAULT ('SuperAdmin'),
@@ -65,6 +66,16 @@ END
 GO
 
 -- ==========================================================
+-- 2b. Add MobileNumber column if the table already existed without it
+IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'SuperAdmins')
+   AND NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('SuperAdmins') AND name = 'MobileNumber')
+BEGIN
+    ALTER TABLE SuperAdmins ADD MobileNumber NVARCHAR(20) NULL;
+    PRINT 'Column MobileNumber added to SuperAdmins.';
+END
+GO
+
+-- ==========================================================
 -- 3. Seed a default SuperAdmin account
 --
 --    Username : superadmin
@@ -79,10 +90,11 @@ GO
 -- ==========================================================
 IF NOT EXISTS (SELECT 1 FROM SuperAdmins WHERE Username = 'superadmin')
 BEGIN
-    INSERT INTO SuperAdmins (Username, Email, PasswordHash, Salt, Role, IsActive, IsLocked, FailedLoginAttempts)
+    INSERT INTO SuperAdmins (Username, Email, MobileNumber, PasswordHash, Salt, Role, IsActive, IsLocked, FailedLoginAttempts)
     VALUES (
         'superadmin',
         'admin@banku.in',
+        '9999999999',                 -- Replace with real admin mobile number
         'REPLACE_WITH_PBKDF2_HASH',   -- PasswordService.HashPassword result
         'REPLACE_WITH_SALT',          -- corresponding Salt
         'SuperAdmin',

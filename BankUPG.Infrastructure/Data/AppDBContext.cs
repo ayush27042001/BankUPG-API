@@ -844,6 +844,7 @@ public partial class AppDBContext : DbContext
             entity.Property(e => e.AdminId).HasColumnName("AdminID");
             entity.Property(e => e.Username).HasMaxLength(100);
             entity.Property(e => e.Email).HasMaxLength(255);
+            entity.Property(e => e.MobileNumber).HasMaxLength(20);
             entity.Property(e => e.PasswordHash).HasMaxLength(512);
             entity.Property(e => e.Salt).HasMaxLength(256);
             entity.Property(e => e.Role).HasMaxLength(50).HasDefaultValue("SuperAdmin");

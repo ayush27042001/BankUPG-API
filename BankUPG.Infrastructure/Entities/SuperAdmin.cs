@@ -12,6 +12,8 @@ public class SuperAdmin
 
     public string Salt { get; set; } = null!;
 
+    public string? MobileNumber { get; set; }
+
     public string Role { get; set; } = "SuperAdmin";
 
     public bool IsActive { get; set; } = true;

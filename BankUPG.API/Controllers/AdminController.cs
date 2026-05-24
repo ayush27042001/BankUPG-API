@@ -7,7 +7,6 @@ using BankUPG.SharedKernal.Responses;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using System.Security.Cryptography;
 
 namespace BankUPG.API.Controllers
 {
@@ -18,17 +17,18 @@ namespace BankUPG.API.Controllers
         private readonly AppDBContext _context;
         private readonly JwtService _jwtService;
         private readonly PasswordService _passwordService;
+        private readonly OtpService _otpService;
         private readonly IMemoryCache _cache;
         private readonly ILogger<AdminController> _logger;
         private readonly AppSettings _appSettings;
 
-        private const int OtpExpiryMinutes = 5;
-        private const string OtpCacheKeyPrefix = "admin_otp:";
+        private const string AdminOtpPurpose = "ADMIN_LOGIN";
 
         public AdminController(
             AppDBContext context,
             JwtService jwtService,
             PasswordService passwordService,
+            OtpService otpService,
             IMemoryCache cache,
             ILogger<AdminController> logger,
             AppSettings appSettings)
@@ -36,6 +36,7 @@ namespace BankUPG.API.Controllers
             _context = context;
             _jwtService = jwtService;
             _passwordService = passwordService;
+            _otpService = otpService;
             _cache = cache;
             _logger = logger;
             _appSettings = appSettings;
@@ -107,24 +108,28 @@ namespace BankUPG.API.Controllers
                 admin.FailedLoginAttempts = 0;
                 await _context.SaveChangesAsync();
 
-                // Generate 6-digit OTP and store in memory cache
-                var otpCode = GenerateOtpCode();
-                var cacheKey = $"{OtpCacheKeyPrefix}{admin.Username}";
+                if (string.IsNullOrEmpty(admin.MobileNumber))
+                {
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "No mobile number configured for this admin account. Please contact support."
+                    });
+                }
 
-                var cacheOptions = new MemoryCacheEntryOptions()
-                    .SetAbsoluteExpiration(TimeSpan.FromMinutes(OtpExpiryMinutes))
-                    .SetSize(1);
-
-                _cache.Set(cacheKey, otpCode, cacheOptions);
-
-                // TODO: Send OTP via email to admin.Email
-                // For now the OTP is logged – replace with your email service
-                _logger.LogInformation("SuperAdmin OTP for {Username}: {Otp}", admin.Username, otpCode);
+                // Use the same OtpService used by AuthController – generates OTP,
+                // stores it in cache as otp:{mobile}:ADMIN_LOGIN, and sends SMS.
+                await _otpService.GenerateOtpAsync(
+                    admin.MobileNumber,
+                    AdminOtpPurpose,
+                    null,
+                    null,
+                    GetClientIpAddress());
 
                 return Ok(new ApiResponse<object>
                 {
                     Success = true,
-                    Message = $"OTP sent to registered email. Valid for {OtpExpiryMinutes} minutes."
+                    Message = "OTP sent to registered mobile number. Valid for 5 minutes."
                 });
             }
             catch (Exception ex)
@@ -148,20 +153,6 @@ namespace BankUPG.API.Controllers
         {
             try
             {
-                var cacheKey = $"{OtpCacheKeyPrefix}{request.Username}";
-
-                if (!_cache.TryGetValue(cacheKey, out string? cachedOtp) || cachedOtp != request.Otp)
-                {
-                    return BadRequest(new ApiResponse<AdminVerifyOtpData>
-                    {
-                        Success = false,
-                        Message = "Invalid or expired OTP."
-                    });
-                }
-
-                // Invalidate the OTP immediately after successful verification
-                _cache.Remove(cacheKey);
-
                 var admin = await _context.SuperAdmins
                     .FirstOrDefaultAsync(a => a.Username == request.Username);
 
@@ -173,6 +164,22 @@ namespace BankUPG.API.Controllers
                         Message = "Admin not found."
                     });
                 }
+
+                // OtpService stores the OTP in cache with key: otp:{mobile}:{purpose}
+                // (same key format used for merchant registration OTPs)
+                var cacheKey = $"otp:{admin.MobileNumber}:{AdminOtpPurpose}";
+
+                if (!_cache.TryGetValue(cacheKey, out string? cachedOtp) || cachedOtp != request.Otp)
+                {
+                    return BadRequest(new ApiResponse<AdminVerifyOtpData>
+                    {
+                        Success = false,
+                        Message = "Invalid or expired OTP."
+                    });
+                }
+
+                // Invalidate OTP immediately after successful verification
+                _cache.Remove(cacheKey);
 
                 // Update last login date
                 admin.LastLoginDate = DateTime.UtcNow;
@@ -325,15 +332,6 @@ namespace BankUPG.API.Controllers
                     Message = "An error occurred while refreshing the token."
                 });
             }
-        }
-
-        private static string GenerateOtpCode()
-        {
-            using var rng = RandomNumberGenerator.Create();
-            var bytes = new byte[4];
-            rng.GetBytes(bytes);
-            var number = BitConverter.ToUInt32(bytes, 0) % 1_000_000;
-            return number.ToString("D6");
         }
 
         private string? GetClientIpAddress()
