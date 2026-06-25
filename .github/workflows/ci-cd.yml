@@ -192,9 +192,9 @@ jobs:
       - name: Remove app_offline.htm to bring application back online
         if: always()
         run: |
-          curl -s "ftp://${{ secrets.PLESK_FTP_HOST }}/apipg.banku.co.in/" \
+          curl -s "ftp://${{ secrets.PLESK_FTP_HOST }}/" \
             --user "${{ secrets.PLESK_FTP_USERNAME }}:${{ secrets.PLESK_FTP_PASSWORD }}" \
-            -Q "DELE app_offline.htm" || echo "app_offline.htm already removed or not found"
+            -Q "DELE /apipg.banku.co.in/app_offline.htm" || echo "app_offline.htm already removed or not found"
           echo "app_offline.htm removed — application is back online"
           
       - name: Start Application Pool via Plesk API
