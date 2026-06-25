@@ -148,7 +148,7 @@ jobs:
       - name: Upload app_offline.htm to take application offline
         run: |
           curl -s -T ${{ env.PUBLISH_PATH }}/app_offline.htm \
-            "ftp://${{ secrets.PLESK_FTP_HOST }}/app_offline.htm" \
+            "ftp://${{ secrets.PLESK_FTP_HOST }}/apipg.banku.co.in/app_offline.htm" \
             --user "${{ secrets.PLESK_FTP_USERNAME }}:${{ secrets.PLESK_FTP_PASSWORD }}" \
             --ftp-create-dirs
           echo "app_offline.htm uploaded — application is now offline"
@@ -176,7 +176,7 @@ jobs:
           username: ${{ secrets.PLESK_FTP_USERNAME }}
           password: ${{ secrets.PLESK_FTP_PASSWORD }}
           local-dir: ${{ env.PUBLISH_PATH }}/
-          server-dir: /
+          server-dir: /apipg.banku.co.in/
           protocol: ftp
           port: 21
           exclude: |
@@ -192,7 +192,7 @@ jobs:
       - name: Remove app_offline.htm to bring application back online
         if: always()
         run: |
-          curl -s "ftp://${{ secrets.PLESK_FTP_HOST }}/" \
+          curl -s "ftp://${{ secrets.PLESK_FTP_HOST }}/apipg.banku.co.in/" \
             --user "${{ secrets.PLESK_FTP_USERNAME }}:${{ secrets.PLESK_FTP_PASSWORD }}" \
             -Q "DELE app_offline.htm" || echo "app_offline.htm already removed or not found"
           echo "app_offline.htm removed — application is back online"
