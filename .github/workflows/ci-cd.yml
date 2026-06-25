@@ -21,6 +21,13 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Extract Commit Author Info
+        id: commit-info
+        run: |
+          echo "author_email=$(git log -1 --format='%ae')" >> $GITHUB_OUTPUT
+          echo "committer_email=$(git log -1 --format='%ce')" >> $GITHUB_OUTPUT
+          echo "author_name=$(git log -1 --format='%an')" >> $GITHUB_OUTPUT
         
       - name: Setup .NET ${{ env.DOTNET_VERSION }}
         uses: actions/setup-dotnet@v4
@@ -53,6 +60,25 @@ jobs:
           name: api-publish
           path: ${{ env.PUBLISH_PATH }}
           retention-days: 1
+
+      - name: Send Build Failure Email
+        if: failure()
+        env:
+          ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
+          ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
+          ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+          ZOHO_FROM_EMAIL: ${{ secrets.ZOHO_FROM_EMAIL }}
+          EMAIL_JOB: build
+          EMAIL_STATUS: failure
+          AUTHOR_NAME: ${{ steps.commit-info.outputs.author_name }}
+          AUTHOR_EMAIL: ${{ steps.commit-info.outputs.author_email }}
+          COMMITTER_EMAIL: ${{ steps.commit-info.outputs.committer_email }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          EVENT: ${{ github.event_name }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python3 .github/scripts/send_zoho_email.py
 
   deploy:
     name: Deploy to Production
@@ -211,9 +237,46 @@ jobs:
             echo "Warning: Plesk API did not confirm app pool start (HTTP $HTTP_CODE)."
           fi
             
-      - name: Deployment Success Notification
+      - name: Send Deployment Success Email
+        if: success()
+        env:
+          ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
+          ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
+          ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+          ZOHO_FROM_EMAIL: ${{ secrets.ZOHO_FROM_EMAIL }}
+          EMAIL_JOB: deploy
+          EMAIL_STATUS: success
+          AUTHOR_NAME: ${{ github.event.head_commit.author.name }}
+          AUTHOR_EMAIL: ${{ github.event.head_commit.author.email }}
+          COMMITTER_EMAIL: ${{ github.event.head_commit.committer.email }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          COMMIT_TIME: ${{ github.event.head_commit.timestamp }}
+          ACTOR: ${{ github.actor }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          echo "✅ Deployment completed successfully!"
-          echo "📅 Deployment Time: $(date)"
-          echo "🔀 Commit: ${{ github.sha }}"
-          echo "👤 Deployed by: ${{ github.actor }}"
+          git clone --depth 1 --filter=blob:none --sparse https://x-access-token:${{ github.token }}@github.com/${{ github.repository }} /tmp/repo
+          cd /tmp/repo && git sparse-checkout set .github/scripts
+          python3 /tmp/repo/.github/scripts/send_zoho_email.py
+
+      - name: Send Deployment Failure Email
+        if: failure()
+        env:
+          ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
+          ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
+          ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+          ZOHO_FROM_EMAIL: ${{ secrets.ZOHO_FROM_EMAIL }}
+          EMAIL_JOB: deploy
+          EMAIL_STATUS: failure
+          AUTHOR_NAME: ${{ github.event.head_commit.author.name }}
+          AUTHOR_EMAIL: ${{ github.event.head_commit.author.email }}
+          COMMITTER_EMAIL: ${{ github.event.head_commit.committer.email }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          COMMIT_TIME: ${{ github.event.head_commit.timestamp }}
+          ACTOR: ${{ github.actor }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse https://x-access-token:${{ github.token }}@github.com/${{ github.repository }} /tmp/repo
+          cd /tmp/repo && git sparse-checkout set .github/scripts
+          python3 /tmp/repo/.github/scripts/send_zoho_email.py
