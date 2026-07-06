@@ -119,6 +119,32 @@ namespace BankUPG.API.Controllers
             }
         }
 
+        [HttpGet("list")]
+        [ProducesResponseType(typeof(ApiResponse<PagedResponse<BusinessProofTypeMasterResponse>>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ApiResponse<PagedResponse<BusinessProofTypeMasterResponse>>>> GetBusinessProofTypeList([FromQuery] GetBusinessProofTypeListRequest request)
+        {
+            try
+            {
+                var result = await _businessProofTypeMasterService.GetBusinessProofTypeListAsync(request);
+
+                return Ok(new ApiResponse<PagedResponse<BusinessProofTypeMasterResponse>>
+                {
+                    Success = true,
+                    Message = "Business proof types retrieved successfully",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving business proof type list");
+                return StatusCode(500, new ApiResponse<PagedResponse<BusinessProofTypeMasterResponse>>
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
+            }
+        }
+
         [HttpPut]
         [ProducesResponseType(typeof(ApiResponse<BusinessProofTypeMasterResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]

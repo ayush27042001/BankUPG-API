@@ -184,6 +184,9 @@ builder.Services.AddAuthentication(options =>
 // Add Authorization
 builder.Services.AddAuthorization();
 
+// SuperAdmin bypass: any authenticated user with the SuperAdmin role satisfies every requirement
+builder.Services.AddSingleton<IAuthorizationHandler, BankUPG.API.Authorization.SuperAdminAuthorizationHandler>();
+
 // Add Controllers with JSON options optimized for performance
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
