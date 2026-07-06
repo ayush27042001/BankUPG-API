@@ -37,6 +37,7 @@ using BankUPG.Application.Services.BankAccountDetail;
 using BankUPG.Application.Interfaces.StatusTracker;
 using BankUPG.Application.Services.StatusTracker;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
