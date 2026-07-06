@@ -102,6 +102,52 @@ namespace BankUPG.Application.Services.BusinessProofTypeMaster
                 .ToListAsync();
         }
 
+        public async Task<PagedResponse<BusinessProofTypeMasterResponse>> GetBusinessProofTypeListAsync(GetBusinessProofTypeListRequest request)
+        {
+            var pageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
+            var pageSize = request.PageSize < 1 ? 10 : request.PageSize > 100 ? 100 : request.PageSize;
+
+            var query = _context.BusinessProofTypes.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(request.Search))
+            {
+                var search = request.Search.Trim().ToLower();
+                query = query.Where(bpt =>
+                    bpt.ProofName.ToLower().Contains(search) ||
+                    bpt.ProofCode.ToLower().Contains(search) ||
+                    (bpt.Description != null && bpt.Description.ToLower().Contains(search)));
+            }
+
+            if (request.IsActive.HasValue)
+                query = query.Where(bpt => bpt.IsActive == request.IsActive.Value);
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderBy(bpt => bpt.ProofName)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .Select(bpt => new BusinessProofTypeMasterResponse
+                {
+                    BusinessProofTypeId = bpt.BusinessProofTypeId,
+                    ProofName = bpt.ProofName,
+                    ProofCode = bpt.ProofCode,
+                    Description = bpt.Description,
+                    IsActive = bpt.IsActive,
+                    CreatedDate = bpt.CreatedDate,
+                    UpdatedDate = bpt.UpdatedDate
+                })
+                .ToListAsync();
+
+            return new PagedResponse<BusinessProofTypeMasterResponse>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
         public async Task<BusinessProofTypeMasterResponse> UpdateBusinessProofTypeAsync(UpdateBusinessProofTypeMasterRequest request)
         {
             var businessProofType = await _context.BusinessProofTypes
