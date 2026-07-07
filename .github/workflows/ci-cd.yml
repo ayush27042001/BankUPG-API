@@ -200,6 +200,19 @@ jobs:
             
       - name: Wait for application pool to fully release file locks
         run: sleep 30
+
+      - name: Force upload appsettings.Production.json via FTP
+        run: |
+          curl -sS \
+            --ftp-pasv \
+            --connect-timeout 30 \
+            --max-time 60 \
+            --retry 3 \
+            --retry-delay 5 \
+            -T ${{ env.PUBLISH_PATH }}/appsettings.Production.json \
+            "ftp://${{ secrets.PLESK_FTP_HOST }}/apipg.banku.co.in/appsettings.Production.json" \
+            --user "${{ secrets.PLESK_FTP_USERNAME }}:${{ secrets.PLESK_FTP_PASSWORD }}"
+          echo "appsettings.Production.json force-uploaded successfully"
             
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
