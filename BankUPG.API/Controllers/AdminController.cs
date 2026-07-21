@@ -1,10 +1,12 @@
 using BankUPG.Application.Services.Auth;
+using BankUPG.Application.Interfaces.Admin;
 using BankUPG.Infrastructure.Data;
 using BankUPG.Infrastructure.Entities;
 using BankUPG.SharedKernal.Models;
 using BankUPG.SharedKernal.Requests;
 using BankUPG.SharedKernal.Responses;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -21,6 +23,7 @@ namespace BankUPG.API.Controllers
         private readonly IMemoryCache _cache;
         private readonly ILogger<AdminController> _logger;
         private readonly AppSettings _appSettings;
+        private readonly IAdminService _adminService;
 
         private const string AdminOtpPurpose = "ADMIN_LOGIN";
 
@@ -31,7 +34,8 @@ namespace BankUPG.API.Controllers
             OtpService otpService,
             IMemoryCache cache,
             ILogger<AdminController> logger,
-            AppSettings appSettings)
+            AppSettings appSettings,
+            IAdminService adminService)
         {
             _context = context;
             _jwtService = jwtService;
@@ -40,6 +44,7 @@ namespace BankUPG.API.Controllers
             _cache = cache;
             _logger = logger;
             _appSettings = appSettings;
+            _adminService = adminService;
         }
 
         /// <summary>
@@ -330,6 +335,67 @@ namespace BankUPG.API.Controllers
                 {
                     Success = false,
                     Message = "An error occurred while refreshing the token."
+                });
+            }
+        }
+
+        /// <summary>
+        /// Get complete user/merchant data along with uploaded documents.
+        /// Expects UserId and BehalfOfUserId query parameters.
+        /// </summary>
+        [HttpGet("user-detail")]
+        [Authorize]
+        [ProducesResponseType(typeof(ApiResponse<UserCompleteDataResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<ApiResponse<UserCompleteDataResponse>>> GetUserCompleteData([FromQuery] UserDetailRequest request)
+        {
+            try
+            {
+                if (request.UserId <= 0)
+                {
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "UserId is required and must be greater than 0."
+                    });
+                }
+
+                if (request.BehalfOfUserId <= 0)
+                {
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "BehalfOfUserId is required and must be greater than 0."
+                    });
+                }
+
+                var data = await _adminService.GetUserCompleteDataAsync(request);
+
+                if (data == null)
+                {
+                    return NotFound(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "User not found."
+                    });
+                }
+
+                return Ok(new ApiResponse<UserCompleteDataResponse>
+                {
+                    Success = true,
+                    Message = "User complete data retrieved successfully.",
+                    Data = data
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving complete user data for UserId: {UserId}", request.UserId);
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "An error occurred while retrieving user data."
                 });
             }
         }

@@ -1,4 +1,5 @@
 using BankUPG.API.Middleware;
+using BankUPG.Application.Interfaces.Admin;
 using BankUPG.Application.Interfaces.Auth;
 using BankUPG.Application.Interfaces.BankAccountDetail;
 using BankUPG.Application.Interfaces.BusinessAddress;
@@ -23,6 +24,7 @@ using BankUPG.Application.Interfaces.SigningAuthorityDetail;
 using BankUPG.Application.Interfaces.StatusTracker;
 using BankUPG.Application.Interfaces.Verification;
 using BankUPG.Application.Services;
+using BankUPG.Application.Services.Admin;
 using BankUPG.Application.Services.Auth;
 using BankUPG.Application.Services.Auth;
 using BankUPG.Application.Services.BankAccountDetail;
@@ -109,6 +111,7 @@ builder.Services.AddScoped<IBusinessProofTypeMasterService, BusinessProofTypeMas
 builder.Services.AddScoped<IServiceAgreementService, ServiceAgreementService>();
 builder.Services.AddScoped<IBankAccountDetailService, BankAccountDetailService>();
 builder.Services.AddScoped<IStatusTrackerService, StatusTrackerService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddSingleton<ITokenBlocklistService, TokenBlocklistService>();
 builder.Services.AddScoped<IBusinessEntityTypeMasterService, BusinessEntityTypeMasterService>();
 builder.Services.AddScoped<IDocumentTypeMasterService, DocumentTypeMasterService>();
