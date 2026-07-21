@@ -3,6 +3,7 @@ using BankUPG.Infrastructure.Data;
 using BankUPG.SharedKernal.Requests;
 using BankUPG.SharedKernal.Responses;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection;
 
 namespace BankUPG.Application.Services.Admin
 {
@@ -76,7 +77,7 @@ namespace BankUPG.Application.Services.Admin
                     .ToListAsync();
             }
 
-            return new UserCompleteDataResponse
+            var response = new UserCompleteDataResponse
             {
                 UserId = user.UserId,
                 LastLoginDate = user.LastLoginDate,
@@ -138,8 +139,33 @@ namespace BankUPG.Application.Services.Admin
                 IsAccepted = merchant?.ServiceAgreement?.IsAccepted,
                 SignatureData = merchant?.ServiceAgreement?.SignatureData,
                 SubmittedDate = merchant?.ServiceAgreement?.SubmittedDate,
-                Documents = documents
+                Documents = documents,
+                MID = merchant?.Mid.ToString() ?? ""
             };
+
+            NormalizeStrings(response);
+            foreach (var doc in response.Documents)
+            {
+                NormalizeStrings(doc);
+            }
+
+            return response;
+        }
+
+        private static void NormalizeStrings(object? obj)
+        {
+            if (obj == null) return;
+
+            foreach (var prop in obj.GetType().GetProperties())
+            {
+                if (prop.PropertyType == typeof(string) && prop.CanWrite && prop.GetIndexParameters().Length == 0)
+                {
+                    if (prop.GetValue(obj) is null)
+                    {
+                        prop.SetValue(obj, string.Empty);
+                    }
+                }
+            }
         }
     }
 }

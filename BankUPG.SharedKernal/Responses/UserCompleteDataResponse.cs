@@ -3,6 +3,7 @@ namespace BankUPG.SharedKernal.Responses
     public class UserCompleteDataResponse
     {
         public int UserId { get; set; }
+        public string? MID { get; set; }
         public DateTime? LastLoginDate { get; set; }
         public string? Email { get; set; }
         public string? IsLocked { get; set; }
