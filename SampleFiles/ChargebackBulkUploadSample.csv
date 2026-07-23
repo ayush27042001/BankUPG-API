@@ -1,0 +1,6 @@
+TransactionId,BankCaseNumber,CaseNumber,ChargebackDate,ReplyBefore,Status,ChargebackReason,ChargebackType,CloseReason,DocumentPath
+1001,BANK-CB-001,CB-2026-0001,2026-07-01T10:00:00,2026-07-15T10:00:00,New,Customer dispute - unrecognized transaction,CB,,
+1002,BANK-CB-002,CB-2026-0002,2026-07-02T11:30:00,2026-07-16T11:30:00,PendingResponse,Product not received,GoodFaith,,
+1003,BANK-CB-003,CB-2026-0003,2026-07-03T09:15:00,2026-07-17T09:15:00,PendingReview,Duplicate processing,PreArb,,
+1004,BANK-CB-004,CB-2026-0004,2026-07-04T14:45:00,2026-07-18T14:45:00,Closed,Fraudulent transaction,CB,Accepted,https://example.com/docs/cb-004.pdf
+1005,BANK-CB-005,CB-2026-0005,2026-07-05T16:00:00,2026-07-19T16:00:00,Closed,Customer did not authorize,CB,Rejected,

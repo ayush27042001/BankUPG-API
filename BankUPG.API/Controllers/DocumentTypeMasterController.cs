@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using BankUPG.Application.Interfaces.DocumentTypeMaster;
@@ -10,6 +11,7 @@ namespace BankUPG.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = "SuperAdmin")]
     public class DocumentTypeMasterController : ControllerBase
     {
         private readonly IDocumentTypeMasterService _documentTypeMasterService;

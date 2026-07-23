@@ -1,12 +1,14 @@
 ﻿using BankUPG.Application.Interfaces.BusinessSubCategoryMaster;
 using BankUPG.SharedKernal.Requests;
 using BankUPG.SharedKernal.Responses;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using BankUPG.Application.Interfaces.BusinessSubCategoryMaster;
 namespace BankUPG.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = "SuperAdmin")]
     public class BusinessSubCategoryMasterController : ControllerBase
     {
         private readonly IBusinessSubCategoryMasterService _businessSubCategoryMasterService;

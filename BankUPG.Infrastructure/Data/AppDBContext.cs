@@ -67,6 +67,68 @@ public partial class AppDBContext : DbContext
 
     public virtual DbSet<SuperAdminRefreshToken> SuperAdminRefreshTokens { get; set; }
 
+    public virtual DbSet<Transaction> Transactions { get; set; }
+
+    public virtual DbSet<Refund> Refunds { get; set; }
+
+    public virtual DbSet<Settlement> Settlements { get; set; }
+
+    public virtual DbSet<Chargeback> Chargebacks { get; set; }
+
+    public virtual DbSet<MerchantApiKey> MerchantApiKeys { get; set; }
+
+    public virtual DbSet<Webhook> Webhooks { get; set; }
+
+    public virtual DbSet<WebhookLog> WebhookLogs { get; set; }
+
+    public virtual DbSet<CheckoutCustomization> CheckoutCustomizations { get; set; }
+
+    public virtual DbSet<MerchantPaymentMethod> MerchantPaymentMethods { get; set; }
+
+    public virtual DbSet<MerchantColumnPreference> MerchantColumnPreferences { get; set; }
+
+    public virtual DbSet<MerchantWallet> MerchantWallets { get; set; }
+
+    public virtual DbSet<WalletLedger> WalletLedgers { get; set; }
+
+    public virtual DbSet<MerchantSettlementConfig> MerchantSettlementConfigs { get; set; }
+
+    public virtual DbSet<PaymentMethodCharge> PaymentMethodCharges { get; set; }
+
+    public virtual DbSet<TransactionCharge> TransactionCharges { get; set; }
+
+    public virtual DbSet<MerchantDailySummary> MerchantDailySummaries { get; set; }
+
+    public virtual DbSet<PaymentOrder> PaymentOrders { get; set; }
+
+    public virtual DbSet<PaymentAttempt> PaymentAttempts { get; set; }
+
+    public virtual DbSet<PaymentLink> PaymentLinks { get; set; }
+
+    public virtual DbSet<Payout> Payouts { get; set; }
+
+    public virtual DbSet<PayoutBeneficiary> PayoutBeneficiaries { get; set; }
+
+    public virtual DbSet<BatchRefund> BatchRefunds { get; set; }
+
+    public virtual DbSet<BatchRefundItem> BatchRefundItems { get; set; }
+
+    public virtual DbSet<Invoice> Invoices { get; set; }
+
+    public virtual DbSet<InvoiceItem> InvoiceItems { get; set; }
+
+    public virtual DbSet<SubscriptionPlan> SubscriptionPlans { get; set; }
+
+    public virtual DbSet<Subscription> Subscriptions { get; set; }
+
+    public virtual DbSet<EmiPlan> EmiPlans { get; set; }
+
+    public virtual DbSet<PaymentLinkBulkUpload> PaymentLinkBulkUploads { get; set; }
+
+    public virtual DbSet<PaymentLinkBulkUploadFile> PaymentLinkBulkUploadFiles { get; set; }
+
+    public virtual DbSet<MerchantIpWhitelist> MerchantIpWhitelists { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Data Source=97.74.80.235,1232;Initial Catalog=BankuPG;Persist Security Info=True;User ID=sa;Password=BankU@2022*1std^ca;TrustServerCertificate=True");
@@ -884,6 +946,952 @@ public partial class AppDBContext : DbContext
                 .HasForeignKey(d => d.AdminId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("FK_SuperAdminRefreshTokens_SuperAdmins");
+        });
+
+        modelBuilder.Entity<Transaction>(entity =>
+        {
+            entity.HasKey(e => e.TransactionId).HasName("PK_Transactions");
+
+            entity.HasIndex(e => e.Mid, "IX_Transactions_MID");
+            entity.HasIndex(e => e.PayuId, "IX_Transactions_PayuId");
+            entity.HasIndex(e => e.Status, "IX_Transactions_Status");
+            entity.HasIndex(e => e.TransactionDate, "IX_Transactions_TransactionDate");
+            entity.HasIndex(e => e.CustomerEmail, "IX_Transactions_CustomerEmail");
+
+            entity.Property(e => e.TransactionId).HasColumnName("TransactionID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.PayuId).HasMaxLength(100);
+            entity.Property(e => e.MerchantReferenceId).HasMaxLength(200);
+            entity.Property(e => e.CustomerEmail).HasMaxLength(255);
+            entity.Property(e => e.CustomerPhone).HasMaxLength(20);
+            entity.Property(e => e.CustomerName).HasMaxLength(200);
+            entity.Property(e => e.PaymentMode).HasMaxLength(100);
+            entity.Property(e => e.Source).HasMaxLength(100);
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Status).HasMaxLength(50);
+            entity.Property(e => e.UpiReference).HasMaxLength(200);
+            entity.Property(e => e.BankReference).HasMaxLength(200);
+            entity.Property(e => e.TransactionDate).HasColumnType("datetime");
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.Property(e => e.OrderId).HasColumnName("OrderID");
+            entity.Property(e => e.PaymentLinkId).HasColumnName("PaymentLinkID");
+            entity.Property(e => e.SubscriptionId).HasColumnName("SubscriptionID");
+            entity.Property(e => e.InvoiceId).HasColumnName("InvoiceID");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.Transactions)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_Transactions_Merchants");
+
+            entity.HasOne(d => d.Order).WithMany(p => p.Transactions)
+                .HasForeignKey(d => d.OrderId)
+                .HasConstraintName("FK_Transactions_PaymentOrders");
+
+            entity.HasOne(d => d.PaymentLink).WithMany(p => p.Transactions)
+                .HasForeignKey(d => d.PaymentLinkId)
+                .HasConstraintName("FK_Transactions_PaymentLinks");
+
+            entity.HasOne(d => d.Subscription).WithMany(p => p.Transactions)
+                .HasForeignKey(d => d.SubscriptionId)
+                .HasConstraintName("FK_Transactions_Subscriptions");
+
+            entity.HasOne(d => d.Invoice).WithMany(p => p.Transactions)
+                .HasForeignKey(d => d.InvoiceId)
+                .HasConstraintName("FK_Transactions_Invoices");
+        });
+
+        modelBuilder.Entity<Refund>(entity =>
+        {
+            entity.HasKey(e => e.RefundId).HasName("PK_Refunds");
+
+            entity.HasIndex(e => e.Mid, "IX_Refunds_MID");
+            entity.HasIndex(e => e.TransactionId, "IX_Refunds_TransactionID");
+            entity.HasIndex(e => e.PayuId, "IX_Refunds_PayuId");
+            entity.HasIndex(e => e.Status, "IX_Refunds_Status");
+
+            entity.Property(e => e.RefundId).HasColumnName("RefundID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.TransactionId).HasColumnName("TransactionID");
+            entity.Property(e => e.PayuId).HasMaxLength(100);
+            entity.Property(e => e.MerchantReferenceId).HasMaxLength(200);
+            entity.Property(e => e.RefundType).HasMaxLength(100);
+            entity.Property(e => e.Source).HasMaxLength(100);
+            entity.Property(e => e.BankArn).HasMaxLength(200);
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Status).HasMaxLength(50);
+            entity.Property(e => e.PaymentAggregator).HasMaxLength(100);
+            entity.Property(e => e.RefundDate).HasColumnType("datetime");
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.Refunds)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_Refunds_Merchants");
+
+            entity.HasOne(d => d.Transaction).WithMany(p => p.Refunds)
+                .HasForeignKey(d => d.TransactionId)
+                .HasConstraintName("FK_Refunds_Transactions");
+        });
+
+        modelBuilder.Entity<Settlement>(entity =>
+        {
+            entity.HasKey(e => e.SettlementId).HasName("PK_Settlements");
+
+            entity.HasIndex(e => e.Mid, "IX_Settlements_MID");
+            entity.HasIndex(e => e.UtrNumber, "IX_Settlements_UtrNumber");
+            entity.HasIndex(e => e.Status, "IX_Settlements_Status");
+            entity.HasIndex(e => e.SettlementDate, "IX_Settlements_SettlementDate");
+
+            entity.Property(e => e.SettlementId).HasColumnName("SettlementID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.UtrNumber).HasMaxLength(100);
+            entity.Property(e => e.SalesAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Fees).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.SettledAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Status).HasMaxLength(50);
+            entity.Property(e => e.SettlementCycle).HasMaxLength(50);
+            entity.Property(e => e.SettlementDate).HasColumnType("datetime");
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.Property(e => e.SettlementT);
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.Settlements)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_Settlements_Merchants");
+        });
+
+        modelBuilder.Entity<Chargeback>(entity =>
+        {
+            entity.HasKey(e => e.ChargebackId).HasName("PK_Chargebacks");
+
+            entity.HasIndex(e => e.Mid, "IX_Chargebacks_MID");
+            entity.HasIndex(e => e.TransactionId, "IX_Chargebacks_TransactionID");
+            entity.HasIndex(e => e.PayuId, "IX_Chargebacks_PayuId");
+            entity.HasIndex(e => e.Status, "IX_Chargebacks_Status");
+
+            entity.Property(e => e.ChargebackId).HasColumnName("ChargebackID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.TransactionId).HasColumnName("TransactionID");
+            entity.Property(e => e.PayuId).HasMaxLength(100);
+            entity.Property(e => e.BankCaseNumber).HasMaxLength(100);
+            entity.Property(e => e.CaseNumber).HasMaxLength(100);
+            entity.Property(e => e.ChargebackDate).HasColumnType("datetime");
+            entity.Property(e => e.ReplyBefore).HasColumnType("datetime");
+            entity.Property(e => e.Status).HasMaxLength(50);
+            entity.Property(e => e.ChargebackReason).HasMaxLength(500);
+            entity.Property(e => e.ChargebackType).HasMaxLength(50);
+            entity.Property(e => e.CloseReason).HasMaxLength(50);
+            entity.Property(e => e.DocumentPath).HasMaxLength(1000);
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.Chargebacks)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_Chargebacks_Merchants");
+
+            entity.HasOne(d => d.Transaction).WithMany(p => p.Chargebacks)
+                .HasForeignKey(d => d.TransactionId)
+                .HasConstraintName("FK_Chargebacks_Transactions");
+        });
+
+        modelBuilder.Entity<MerchantApiKey>(entity =>
+        {
+            entity.HasKey(e => e.MerchantApiKeyId).HasName("PK_MerchantApiKeys");
+
+            entity.HasIndex(e => e.Mid, "UQ_MerchantApiKeys_MID").IsUnique();
+
+            entity.Property(e => e.MerchantApiKeyId).HasColumnName("MerchantApiKeyID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.ApiKey).HasMaxLength(500);
+            entity.Property(e => e.ApiSalt).HasMaxLength(500);
+            entity.Property(e => e.ClientId).HasMaxLength(200);
+            entity.Property(e => e.ClientSecretHash).HasMaxLength(512);
+            entity.Property(e => e.LastUpdatedDate).HasColumnType("datetime");
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithOne(p => p.MerchantApiKey)
+                .HasForeignKey<MerchantApiKey>(d => d.Mid)
+                .HasConstraintName("FK_MerchantApiKeys_Merchants");
+        });
+
+        modelBuilder.Entity<Webhook>(entity =>
+        {
+            entity.HasKey(e => e.WebhookId).HasName("PK_Webhooks");
+
+            entity.HasIndex(e => e.Mid, "IX_Webhooks_MID");
+            entity.HasIndex(e => e.Status, "IX_Webhooks_Status");
+
+            entity.Property(e => e.WebhookId).HasColumnName("WebhookID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.Type).HasMaxLength(50);
+            entity.Property(e => e.Event).HasMaxLength(50);
+            entity.Property(e => e.WebhookUrl).HasMaxLength(1000);
+            entity.Property(e => e.Remarks).HasMaxLength(500);
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("Active");
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.Webhooks)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_Webhooks_Merchants");
+        });
+
+        modelBuilder.Entity<WebhookLog>(entity =>
+        {
+            entity.HasKey(e => e.WebhookLogId).HasName("PK_WebhookLogs");
+
+            entity.HasIndex(e => e.WebhookId, "IX_WebhookLogs_WebhookID");
+            entity.HasIndex(e => e.Mid, "IX_WebhookLogs_MID");
+            entity.HasIndex(e => e.LogDate, "IX_WebhookLogs_LogDate");
+
+            entity.Property(e => e.WebhookLogId).HasColumnName("WebhookLogID");
+            entity.Property(e => e.WebhookId).HasColumnName("WebhookID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.TransactionReference).HasMaxLength(200);
+            entity.Property(e => e.EventType).HasMaxLength(100);
+            entity.Property(e => e.ErrorMessage).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.Status).HasMaxLength(50);
+            entity.Property(e => e.LogDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.Webhook).WithMany(p => p.WebhookLogs)
+                .HasForeignKey(d => d.WebhookId)
+                .HasConstraintName("FK_WebhookLogs_Webhooks");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.WebhookLogs)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_WebhookLogs_Merchants");
+        });
+
+        modelBuilder.Entity<CheckoutCustomization>(entity =>
+        {
+            entity.HasKey(e => e.CheckoutCustomizationId).HasName("PK_CheckoutCustomizations");
+
+            entity.HasIndex(e => e.Mid, "UQ_CheckoutCustomizations_MID").IsUnique();
+
+            entity.Property(e => e.CheckoutCustomizationId).HasColumnName("CheckoutCustomizationID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.BrandLogoUrl).HasMaxLength(1000);
+            entity.Property(e => e.PrimaryColor).HasMaxLength(20);
+            entity.Property(e => e.SecondaryColor).HasMaxLength(20);
+            entity.Property(e => e.Language).HasMaxLength(50).HasDefaultValue("English");
+            entity.Property(e => e.OwnerSignatureUrl).HasMaxLength(1000);
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithOne(p => p.CheckoutCustomization)
+                .HasForeignKey<CheckoutCustomization>(d => d.Mid)
+                .HasConstraintName("FK_CheckoutCustomizations_Merchants");
+        });
+
+        modelBuilder.Entity<MerchantPaymentMethod>(entity =>
+        {
+            entity.HasKey(e => e.MerchantPaymentMethodId).HasName("PK_MerchantPaymentMethods");
+
+            entity.HasIndex(e => e.Mid, "IX_MerchantPaymentMethods_MID");
+            entity.HasIndex(e => e.PaymentMethodType, "IX_MerchantPaymentMethods_PaymentMethodType");
+
+            entity.Property(e => e.MerchantPaymentMethodId).HasColumnName("MerchantPaymentMethodID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.PaymentMethodType).HasMaxLength(100);
+            entity.Property(e => e.SubMethodName).HasMaxLength(200);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.MerchantPaymentMethods)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_MerchantPaymentMethods_Merchants");
+        });
+
+        modelBuilder.Entity<PaymentOrder>(entity =>
+        {
+            entity.HasKey(e => e.PaymentOrderId).HasName("PK_PaymentOrders");
+
+            entity.HasIndex(e => e.Mid, "IX_PaymentOrders_MID");
+            entity.HasIndex(e => e.Status, "IX_PaymentOrders_Status");
+            entity.HasIndex(e => e.OrderRef, "IX_PaymentOrders_OrderRef");
+
+            entity.Property(e => e.PaymentOrderId).HasColumnName("PaymentOrderID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.OrderRef).HasMaxLength(200);
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Currency).HasMaxLength(10).HasDefaultValue("INR");
+            entity.Property(e => e.CustomerEmail).HasMaxLength(255);
+            entity.Property(e => e.CustomerPhone).HasMaxLength(20);
+            entity.Property(e => e.CustomerName).HasMaxLength(200);
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("created");
+            entity.Property(e => e.ExpiryDate).HasColumnType("datetime");
+            entity.Property(e => e.PaidDate).HasColumnType("datetime");
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.PaymentOrders)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_PaymentOrders_Merchants");
+        });
+
+        modelBuilder.Entity<PaymentAttempt>(entity =>
+        {
+            entity.HasKey(e => e.PaymentAttemptId).HasName("PK_PaymentAttempts");
+
+            entity.HasIndex(e => e.OrderId, "IX_PaymentAttempts_OrderID");
+            entity.HasIndex(e => e.Mid, "IX_PaymentAttempts_MID");
+            entity.HasIndex(e => e.TransactionId, "IX_PaymentAttempts_TransactionID");
+            entity.HasIndex(e => e.Status, "IX_PaymentAttempts_Status");
+
+            entity.Property(e => e.PaymentAttemptId).HasColumnName("PaymentAttemptID");
+            entity.Property(e => e.OrderId).HasColumnName("OrderID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.TransactionId).HasColumnName("TransactionID");
+            entity.Property(e => e.PaymentMode).HasMaxLength(100);
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.Property(e => e.FailureReason).HasMaxLength(500);
+            entity.Property(e => e.AttemptDate).HasColumnType("datetime");
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.Order).WithMany(p => p.PaymentAttempts)
+                .HasForeignKey(d => d.OrderId)
+                .HasConstraintName("FK_PaymentAttempts_PaymentOrders");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.PaymentAttempts)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_PaymentAttempts_Merchants");
+
+            entity.HasOne(d => d.Transaction).WithMany(p => p.PaymentAttempts)
+                .HasForeignKey(d => d.TransactionId)
+                .HasConstraintName("FK_PaymentAttempts_Transactions");
+        });
+
+        modelBuilder.Entity<PaymentLink>(entity =>
+        {
+            entity.HasKey(e => e.PaymentLinkId).HasName("PK_PaymentLinks");
+
+            entity.HasIndex(e => e.Mid, "IX_PaymentLinks_MID");
+            entity.HasIndex(e => e.Status, "IX_PaymentLinks_Status");
+            entity.HasIndex(e => e.ShortUrl, "UQ_PaymentLinks_ShortUrl").IsUnique();
+
+            entity.Property(e => e.PaymentLinkId).HasColumnName("PaymentLinkID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.AmountType).HasMaxLength(20).HasDefaultValue("fixed");
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.Purpose).HasMaxLength(200);
+            entity.Property(e => e.CustomerEmail).HasMaxLength(255);
+            entity.Property(e => e.CustomerPhone).HasMaxLength(20);
+            entity.Property(e => e.CustomerName).HasMaxLength(200);
+            entity.Property(e => e.ExpiryDate).HasColumnType("datetime");
+            entity.Property(e => e.DueDate).HasColumnType("datetime");
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("created");
+            entity.Property(e => e.PaymentType).HasMaxLength(20).HasDefaultValue("Standard");
+            entity.Property(e => e.IsPartialPayment).HasDefaultValue(false);
+            entity.Property(e => e.MaxPaymentsAllowed);
+            entity.Property(e => e.ValidationPeriod);
+            entity.Property(e => e.TimeUnit).HasMaxLength(5);
+            entity.Property(e => e.SendSms).HasDefaultValue(false);
+            entity.Property(e => e.ShortUrl).HasMaxLength(300);
+            entity.Property(e => e.ReferenceId).HasMaxLength(200);
+            entity.Property(e => e.InvoiceId).HasMaxLength(100);
+            entity.Property(e => e.MaxUses);
+            entity.Property(e => e.UsedCount).HasDefaultValue(0);
+            entity.Property(e => e.TotalViews).HasDefaultValue(0);
+            entity.Property(e => e.TotalAmountPaid).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.CustomerDataCapture);
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.PaymentLinks)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_PaymentLinks_Merchants");
+        });
+
+        modelBuilder.Entity<PayoutBeneficiary>(entity =>
+        {
+            entity.HasKey(e => e.PayoutBeneficiaryId).HasName("PK_PayoutBeneficiaries");
+
+            entity.HasIndex(e => e.Mid, "IX_PayoutBeneficiaries_MID");
+            entity.HasIndex(e => e.IsActive, "IX_PayoutBeneficiaries_IsActive");
+
+            entity.Property(e => e.PayoutBeneficiaryId).HasColumnName("PayoutBeneficiaryID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.BeneficiaryName).HasMaxLength(200);
+            entity.Property(e => e.AccountNumber).HasMaxLength(50);
+            entity.Property(e => e.Ifsccode).HasMaxLength(20).HasColumnName("IFSCCode");
+            entity.Property(e => e.BankName).HasMaxLength(200);
+            entity.Property(e => e.AccountType).HasMaxLength(20);
+            entity.Property(e => e.UpiId).HasMaxLength(100);
+            entity.Property(e => e.Email).HasMaxLength(255);
+            entity.Property(e => e.Phone).HasMaxLength(20);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.PayoutBeneficiaries)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_PayoutBeneficiaries_Merchants");
+        });
+
+        modelBuilder.Entity<Payout>(entity =>
+        {
+            entity.HasKey(e => e.PayoutId).HasName("PK_Payouts");
+
+            entity.HasIndex(e => e.Mid, "IX_Payouts_MID");
+            entity.HasIndex(e => e.Status, "IX_Payouts_Status");
+            entity.HasIndex(e => e.UtrNumber, "IX_Payouts_UtrNumber");
+
+            entity.Property(e => e.PayoutId).HasColumnName("PayoutID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.BeneficiaryId).HasColumnName("BeneficiaryID");
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Currency).HasMaxLength(10).HasDefaultValue("INR");
+            entity.Property(e => e.Mode).HasMaxLength(10);
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("queued");
+            entity.Property(e => e.ReferenceId).HasMaxLength(200);
+            entity.Property(e => e.UtrNumber).HasMaxLength(100);
+            entity.Property(e => e.Narration).HasMaxLength(500);
+            entity.Property(e => e.FailureReason).HasMaxLength(500);
+            entity.Property(e => e.ScheduledDate).HasColumnType("datetime");
+            entity.Property(e => e.ProcessedDate).HasColumnType("datetime");
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.Payouts)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_Payouts_Merchants");
+
+            entity.HasOne(d => d.Beneficiary).WithMany(p => p.Payouts)
+                .HasForeignKey(d => d.BeneficiaryId)
+                .HasConstraintName("FK_Payouts_PayoutBeneficiaries");
+        });
+
+        modelBuilder.Entity<BatchRefund>(entity =>
+        {
+            entity.HasKey(e => e.BatchRefundId).HasName("PK_BatchRefunds");
+
+            entity.HasIndex(e => e.Mid, "IX_BatchRefunds_MID");
+            entity.HasIndex(e => e.Status, "IX_BatchRefunds_Status");
+
+            entity.Property(e => e.BatchRefundId).HasColumnName("BatchRefundID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.BatchReferenceId).HasMaxLength(200);
+            entity.Property(e => e.TotalItems).HasDefaultValue(0);
+            entity.Property(e => e.TotalAmount).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.ProcessedItems).HasDefaultValue(0);
+            entity.Property(e => e.SuccessCount).HasDefaultValue(0);
+            entity.Property(e => e.FailedCount).HasDefaultValue(0);
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("pending");
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.BatchRefunds)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_BatchRefunds_Merchants");
+        });
+
+        modelBuilder.Entity<BatchRefundItem>(entity =>
+        {
+            entity.HasKey(e => e.BatchRefundItemId).HasName("PK_BatchRefundItems");
+
+            entity.HasIndex(e => e.BatchRefundId, "IX_BatchRefundItems_BatchRefundID");
+            entity.HasIndex(e => e.TransactionId, "IX_BatchRefundItems_TransactionID");
+            entity.HasIndex(e => e.RefundId, "IX_BatchRefundItems_RefundID");
+
+            entity.Property(e => e.BatchRefundItemId).HasColumnName("BatchRefundItemID");
+            entity.Property(e => e.BatchRefundId).HasColumnName("BatchRefundID");
+            entity.Property(e => e.TransactionId).HasColumnName("TransactionID");
+            entity.Property(e => e.RefundId).HasColumnName("RefundID");
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("pending");
+            entity.Property(e => e.FailureReason).HasMaxLength(500);
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.BatchRefund).WithMany(p => p.BatchRefundItems)
+                .HasForeignKey(d => d.BatchRefundId)
+                .HasConstraintName("FK_BatchRefundItems_BatchRefunds");
+
+            entity.HasOne(d => d.Transaction).WithMany(p => p.BatchRefundItems)
+                .HasForeignKey(d => d.TransactionId)
+                .HasConstraintName("FK_BatchRefundItems_Transactions");
+
+            entity.HasOne(d => d.Refund).WithMany()
+                .HasForeignKey(d => d.RefundId)
+                .HasConstraintName("FK_BatchRefundItems_Refunds");
+        });
+
+        modelBuilder.Entity<Invoice>(entity =>
+        {
+            entity.HasKey(e => e.InvoiceId).HasName("PK_Invoices");
+
+            entity.HasIndex(e => e.Mid, "IX_Invoices_MID");
+            entity.HasIndex(e => e.Status, "IX_Invoices_Status");
+            entity.HasIndex(e => new { e.Mid, e.InvoiceNumber }, "UQ_Invoices_MID_InvoiceNumber").IsUnique();
+
+            entity.Property(e => e.InvoiceId).HasColumnName("InvoiceID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.InvoiceNumber).HasMaxLength(50);
+            entity.Property(e => e.CustomerName).HasMaxLength(200);
+            entity.Property(e => e.CustomerEmail).HasMaxLength(255);
+            entity.Property(e => e.CustomerPhone).HasMaxLength(20);
+            entity.Property(e => e.SubTotal).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TaxAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TotalAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("draft");
+            entity.Property(e => e.DueDate).HasColumnType("datetime");
+            entity.Property(e => e.PaidDate).HasColumnType("datetime");
+            entity.Property(e => e.Notes).HasMaxLength(1000);
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.Invoices)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_Invoices_Merchants");
+        });
+
+        modelBuilder.Entity<InvoiceItem>(entity =>
+        {
+            entity.HasKey(e => e.InvoiceItemId).HasName("PK_InvoiceItems");
+
+            entity.HasIndex(e => e.InvoiceId, "IX_InvoiceItems_InvoiceID");
+
+            entity.Property(e => e.InvoiceItemId).HasColumnName("InvoiceItemID");
+            entity.Property(e => e.InvoiceId).HasColumnName("InvoiceID");
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.Quantity).HasDefaultValue(1);
+            entity.Property(e => e.UnitPrice).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+
+            entity.HasOne(d => d.Invoice).WithMany(p => p.InvoiceItems)
+                .HasForeignKey(d => d.InvoiceId)
+                .HasConstraintName("FK_InvoiceItems_Invoices");
+        });
+
+        modelBuilder.Entity<SubscriptionPlan>(entity =>
+        {
+            entity.HasKey(e => e.SubscriptionPlanId).HasName("PK_SubscriptionPlans");
+
+            entity.HasIndex(e => e.Mid, "IX_SubscriptionPlans_MID");
+            entity.HasIndex(e => e.IsActive, "IX_SubscriptionPlans_IsActive");
+
+            entity.Property(e => e.SubscriptionPlanId).HasColumnName("SubscriptionPlanID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.PlanName).HasMaxLength(200);
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Currency).HasMaxLength(10).HasDefaultValue("INR");
+            entity.Property(e => e.Interval).HasMaxLength(20);
+            entity.Property(e => e.IntervalCount).HasDefaultValue(1);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.SubscriptionPlans)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_SubscriptionPlans_Merchants");
+        });
+
+        modelBuilder.Entity<Subscription>(entity =>
+        {
+            entity.HasKey(e => e.SubscriptionId).HasName("PK_Subscriptions");
+
+            entity.HasIndex(e => e.Mid, "IX_Subscriptions_MID");
+            entity.HasIndex(e => e.PlanId, "IX_Subscriptions_PlanID");
+            entity.HasIndex(e => e.Status, "IX_Subscriptions_Status");
+            entity.HasIndex(e => e.NextBillingDate, "IX_Subscriptions_NextBillingDate");
+
+            entity.Property(e => e.SubscriptionId).HasColumnName("SubscriptionID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.PlanId).HasColumnName("PlanID");
+            entity.Property(e => e.CustomerEmail).HasMaxLength(255);
+            entity.Property(e => e.CustomerPhone).HasMaxLength(20);
+            entity.Property(e => e.CustomerName).HasMaxLength(200);
+            entity.Property(e => e.Status).HasMaxLength(30).HasDefaultValue("created");
+            entity.Property(e => e.CurrentCycle).HasDefaultValue(0);
+            entity.Property(e => e.StartDate).HasColumnType("datetime");
+            entity.Property(e => e.EndDate).HasColumnType("datetime");
+            entity.Property(e => e.NextBillingDate).HasColumnType("datetime");
+            entity.Property(e => e.UpiMandateRef).HasMaxLength(200);
+            entity.Property(e => e.NachMandateRef).HasMaxLength(200);
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.Subscriptions)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_Subscriptions_Merchants");
+
+            entity.HasOne(d => d.Plan).WithMany(p => p.Subscriptions)
+                .HasForeignKey(d => d.PlanId)
+                .HasConstraintName("FK_Subscriptions_SubscriptionPlans");
+        });
+
+        modelBuilder.Entity<EmiPlan>(entity =>
+        {
+            entity.HasKey(e => e.EmiPlanId).HasName("PK_EmiPlans");
+
+            entity.HasIndex(e => e.Mid, "IX_EmiPlans_MID");
+            entity.HasIndex(e => e.IsActive, "IX_EmiPlans_IsActive");
+
+            entity.Property(e => e.EmiPlanId).HasColumnName("EmiPlanID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.BankName).HasMaxLength(200);
+            entity.Property(e => e.CardType).HasMaxLength(20);
+            entity.Property(e => e.Tenure);
+            entity.Property(e => e.InterestRate).HasColumnType("decimal(5, 2)");
+            entity.Property(e => e.MinAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.EmiPlans)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_EmiPlans_Merchants");
+        });
+
+        modelBuilder.Entity<MerchantWallet>(entity =>
+        {
+            entity.HasKey(e => e.MerchantWalletId).HasName("PK_MerchantWallets");
+
+            entity.HasIndex(e => e.Mid, "UQ_MerchantWallets_MID").IsUnique();
+
+            entity.Property(e => e.MerchantWalletId).HasColumnName("MerchantWalletID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.TotalBalance).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.OnHoldBalance).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.RefundWalletBalance).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.TotalCredited).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.TotalDebited).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithOne(p => p.MerchantWallet)
+                .HasForeignKey<MerchantWallet>(d => d.Mid)
+                .HasConstraintName("FK_MerchantWallets_Merchants");
+        });
+
+        modelBuilder.Entity<WalletLedger>(entity =>
+        {
+            entity.HasKey(e => e.WalletLedgerId).HasName("PK_WalletLedger");
+
+            entity.HasIndex(e => e.MerchantWalletId, "IX_WalletLedger_WalletID");
+            entity.HasIndex(e => e.Mid, "IX_WalletLedger_MID");
+            entity.HasIndex(e => e.CreatedDate, "IX_WalletLedger_CreatedDate");
+
+            entity.Property(e => e.WalletLedgerId).HasColumnName("WalletLedgerID");
+            entity.Property(e => e.MerchantWalletId).HasColumnName("MerchantWalletID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.ReferenceType).HasMaxLength(50);
+            entity.Property(e => e.EntryType).HasMaxLength(10);
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.BalanceAfter).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MerchantWallet).WithMany(p => p.WalletLedgers)
+                .HasForeignKey(d => d.MerchantWalletId)
+                .HasConstraintName("FK_WalletLedger_MerchantWallets");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.WalletLedgers)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_WalletLedger_Merchants");
+        });
+
+        modelBuilder.Entity<MerchantSettlementConfig>(entity =>
+        {
+            entity.HasKey(e => e.MerchantSettlementConfigId).HasName("PK_MerchantSettlementConfigs");
+
+            entity.HasIndex(e => e.Mid, "UQ_MerchantSettlementConfigs_MID").IsUnique();
+
+            entity.Property(e => e.MerchantSettlementConfigId).HasColumnName("MerchantSettlementConfigID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.SettlementT).HasDefaultValue(2);
+            entity.Property(e => e.SettlementCycleType).HasMaxLength(20);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.EffectiveFrom).HasColumnType("datetime");
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithOne(p => p.MerchantSettlementConfig)
+                .HasForeignKey<MerchantSettlementConfig>(d => d.Mid)
+                .HasConstraintName("FK_MerchantSettlementConfigs_Merchants");
+        });
+
+        modelBuilder.Entity<PaymentMethodCharge>(entity =>
+        {
+            entity.HasKey(e => e.PaymentMethodChargeId).HasName("PK_PaymentMethodCharges");
+
+            entity.HasIndex(e => new { e.PaymentMethodType, e.NetworkName }, "IX_PaymentMethodCharges_Type_Network");
+
+            entity.Property(e => e.PaymentMethodChargeId).HasColumnName("PaymentMethodChargeID");
+            entity.Property(e => e.PaymentMethodType).HasMaxLength(100);
+            entity.Property(e => e.NetworkName).HasMaxLength(100);
+            entity.Property(e => e.ChargeType).HasMaxLength(20);
+            entity.Property(e => e.ChargeValue).HasColumnType("decimal(10, 4)");
+            entity.Property(e => e.MinCharge).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.MaxCharge).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.GstPercentage).HasColumnType("decimal(5, 2)").HasDefaultValue(18m);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+        });
+
+        modelBuilder.Entity<TransactionCharge>(entity =>
+        {
+            entity.HasKey(e => e.TransactionChargeId).HasName("PK_TransactionCharges");
+
+            entity.HasIndex(e => e.TransactionId, "IX_TransactionCharges_TransactionID");
+            entity.HasIndex(e => e.Mid, "IX_TransactionCharges_MID");
+
+            entity.Property(e => e.TransactionChargeId).HasColumnName("TransactionChargeID");
+            entity.Property(e => e.TransactionId).HasColumnName("TransactionID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.PaymentMethodChargeId).HasColumnName("PaymentMethodChargeID");
+            entity.Property(e => e.PaymentMethodType).HasMaxLength(100);
+            entity.Property(e => e.NetworkName).HasMaxLength(100);
+            entity.Property(e => e.ChargeType).HasMaxLength(20);
+            entity.Property(e => e.ChargeValue).HasColumnType("decimal(10, 4)");
+            entity.Property(e => e.TransactionAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.ChargeAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.GstAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TotalDeduction).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.NetAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.Transaction).WithMany(p => p.TransactionCharges)
+                .HasForeignKey(d => d.TransactionId)
+                .HasConstraintName("FK_TransactionCharges_Transactions");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.TransactionCharges)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_TransactionCharges_Merchants");
+
+            entity.HasOne(d => d.PaymentMethodCharge).WithMany(p => p.TransactionCharges)
+                .HasForeignKey(d => d.PaymentMethodChargeId)
+                .HasConstraintName("FK_TransactionCharges_PaymentMethodCharges");
+        });
+
+        modelBuilder.Entity<MerchantDailySummary>(entity =>
+        {
+            entity.HasKey(e => e.MerchantDailySummaryId).HasName("PK_MerchantDailySummaries");
+
+            entity.HasIndex(e => new { e.Mid, e.SummaryDate }, "UQ_MerchantDailySummaries_MID_Date").IsUnique();
+
+            entity.Property(e => e.MerchantDailySummaryId).HasColumnName("MerchantDailySummaryID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.SummaryDate).HasColumnType("date");
+            entity.Property(e => e.TotalTransactions).HasDefaultValue(0);
+            entity.Property(e => e.TotalTransactionAmount).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.SuccessfulTransactions).HasDefaultValue(0);
+            entity.Property(e => e.TotalMdrCharges).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.TotalGst).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.TotalDeductions).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.TotalSettledAmount).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.PendingSettlementAmount).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.TotalRefunds).HasDefaultValue(0);
+            entity.Property(e => e.TotalRefundAmount).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.TotalChargebacks).HasDefaultValue(0);
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.MerchantDailySummaries)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_MerchantDailySummaries_Merchants");
+        });
+
+        modelBuilder.Entity<MerchantColumnPreference>(entity =>
+        {
+            entity.HasKey(e => e.MerchantColumnPreferenceId).HasName("PK_MerchantColumnPreferences");
+
+            entity.HasIndex(e => new { e.Mid, e.GridName }, "UQ_MerchantColumnPreferences_MID_Grid").IsUnique();
+
+            entity.Property(e => e.MerchantColumnPreferenceId).HasColumnName("MerchantColumnPreferenceID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.GridName).HasMaxLength(100);
+            entity.Property(e => e.SelectedColumns).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.MerchantColumnPreferences)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_MerchantColumnPreferences_Merchants");
+        });
+
+        modelBuilder.Entity<MerchantIpWhitelist>(entity =>
+        {
+            entity.HasKey(e => e.IpWhitelistId).HasName("PK_MerchantIpWhitelists");
+
+            entity.HasIndex(e => new { e.Mid, e.IpAddress }, "UQ_MerchantIpWhitelists_MID_IP").IsUnique();
+            entity.HasIndex(e => e.Mid, "IX_MerchantIpWhitelists_MID");
+
+            entity.Property(e => e.IpWhitelistId).HasColumnName("IpWhitelistID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.IpAddress).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(300);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.IpWhitelists)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_MerchantIpWhitelists_Merchants");
+        });
+
+        modelBuilder.Entity<PaymentLinkBulkUpload>(entity =>
+        {
+            entity.HasKey(e => e.BulkUploadId).HasName("PK_PaymentLinkBulkUploads");
+            entity.HasIndex(e => e.Mid, "IX_PaymentLinkBulkUploads_MID");
+            entity.HasIndex(e => e.BatchReferenceId, "IX_PaymentLinkBulkUploads_BatchRef");
+
+            entity.Property(e => e.BulkUploadId).HasColumnName("BulkUploadID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.BatchReferenceId).HasMaxLength(100);
+            entity.Property(e => e.CreatorEmail).HasMaxLength(255);
+            entity.Property(e => e.BatchDescription).HasMaxLength(500);
+            entity.Property(e => e.FileName).HasMaxLength(500);
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("Pending");
+            entity.Property(e => e.LinkCreated).HasDefaultValue(0);
+            entity.Property(e => e.ActiveCount).HasDefaultValue(0);
+            entity.Property(e => e.CustomerDataCapture);
+            entity.Property(e => e.SendEmail).HasDefaultValue(false);
+            entity.Property(e => e.SendSms).HasDefaultValue(false);
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.PaymentLinkBulkUploads)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_PaymentLinkBulkUploads_Merchants");
+        });
+
+        modelBuilder.Entity<PaymentLinkBulkUploadFile>(entity =>
+        {
+            entity.HasKey(e => e.FileId).HasName("PK_PaymentLinkBulkUploadFiles");
+            entity.HasIndex(e => e.Mid, "IX_PaymentLinkBulkUploadFiles_MID");
+
+            entity.Property(e => e.FileId).HasColumnName("FileID");
+            entity.Property(e => e.Mid).HasColumnName("MID");
+            entity.Property(e => e.FileName).HasMaxLength(500);
+            entity.Property(e => e.FilePath).HasMaxLength(1000);
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("Active");
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.MidNavigation).WithMany(p => p.PaymentLinkBulkUploadFiles)
+                .HasForeignKey(d => d.Mid)
+                .HasConstraintName("FK_PaymentLinkBulkUploadFiles_Merchants");
         });
 
         OnModelCreatingPartial(modelBuilder);

@@ -67,6 +67,54 @@ using BankUPG.Application.Interfaces.BusinessSubCategoryMaster;
 using BankUPG.Application.Services.BusinessSubCategoryMaster;
 using BankUPG.Application.Interfaces.BusinessCategoryMaster;
 using BankUPG.Application.Services.BusinessCategoryMaster;
+using BankUPG.Application.Interfaces.PaymentOrder;
+using BankUPG.Application.Services.PaymentOrder;
+using BankUPG.Application.Interfaces.PaymentLink;
+using BankUPG.Application.Services.PaymentLink;
+using BankUPG.Application.Interfaces.PaymentLinkBulkUpload;
+using BankUPG.Application.Services.PaymentLinkBulkUpload;
+using BankUPG.Application.Interfaces.PayoutBeneficiary;
+using BankUPG.Application.Services.PayoutBeneficiary;
+using BankUPG.Application.Interfaces.Payout;
+using BankUPG.Application.Services.Payout;
+using BankUPG.Application.Interfaces.BatchRefund;
+using BankUPG.Application.Services.BatchRefund;
+using BankUPG.Application.Interfaces.Invoice;
+using BankUPG.Application.Services.Invoice;
+using BankUPG.Application.Interfaces.SubscriptionPlan;
+using BankUPG.Application.Services.SubscriptionPlan;
+using BankUPG.Application.Interfaces.Subscription;
+using BankUPG.Application.Services.Subscription;
+using BankUPG.Application.Interfaces.EmiPlan;
+using BankUPG.Application.Services.EmiPlan;
+using BankUPG.Application.Interfaces.Wallet;
+using BankUPG.Application.Services.Wallet;
+using BankUPG.Application.Interfaces.Dashboard;
+using BankUPG.Application.Services.Dashboard;
+using BankUPG.Application.Interfaces.Transaction;
+using BankUPG.Application.Services.Transaction;
+using BankUPG.Application.Interfaces.Settlement;
+using BankUPG.Application.Services.Settlement;
+using BankUPG.Application.Interfaces.Chargeback;
+using BankUPG.Application.Services.Chargeback;
+using BankUPG.Application.Interfaces.Refund;
+using BankUPG.Application.Services.Refund;
+using BankUPG.Application.Interfaces.TransactionCharge;
+using BankUPG.Application.Services.TransactionCharge;
+using BankUPG.Application.Interfaces.PaymentMethodCharge;
+using BankUPG.Application.Services.PaymentMethodCharge;
+using BankUPG.Application.Interfaces.MerchantApiKey;
+using BankUPG.Application.Services.MerchantApiKey;
+using BankUPG.Application.Interfaces.CheckoutCustomization;
+using BankUPG.Application.Services.CheckoutCustomization;
+using BankUPG.Application.Interfaces.Webhook;
+using BankUPG.Application.Services.Webhook;
+using BankUPG.Application.Interfaces.MerchantPaymentMethod;
+using BankUPG.Application.Services.MerchantPaymentMethod;
+using BankUPG.Application.Interfaces.MerchantColumnPreference;
+using BankUPG.Application.Services.MerchantColumnPreference;
+using BankUPG.Application.Interfaces.IpWhitelist;
+using BankUPG.Application.Services.IpWhitelist;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -121,6 +169,33 @@ builder.Services.AddScoped<IMerchantMasterService, MerchantMasterService>();
 builder.Services.AddScoped<IUserMasterService, UserMasterService>();
 builder.Services.AddScoped<IBusinessSubCategoryMasterService, BusinessSubCategoryMasterService>();
 builder.Services.AddScoped<IBusinessCategoryMasterService, BusinessCategoryMasterService>();
+
+// Payment Gateway Services
+builder.Services.AddScoped<IPaymentOrderService, PaymentOrderService>();
+builder.Services.AddScoped<IPaymentLinkService, PaymentLinkService>();
+builder.Services.AddScoped<IPaymentLinkBulkUploadService, PaymentLinkBulkUploadService>();
+builder.Services.AddScoped<IPayoutBeneficiaryService, PayoutBeneficiaryService>();
+builder.Services.AddScoped<IPayoutService, PayoutService>();
+builder.Services.AddScoped<IBatchRefundService, BatchRefundService>();
+builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+builder.Services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
+builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+builder.Services.AddScoped<IEmiPlanService, EmiPlanService>();
+builder.Services.AddScoped<IWalletService, WalletService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<ITransactionService, TransactionService>();
+builder.Services.AddScoped<ISettlementService, SettlementService>();
+builder.Services.AddScoped<IChargebackService, ChargebackService>();
+builder.Services.AddScoped<IRefundService, RefundService>();
+builder.Services.AddScoped<ITransactionChargeService, TransactionChargeService>();
+builder.Services.AddScoped<IPaymentMethodChargeService, PaymentMethodChargeService>();
+builder.Services.AddScoped<IMerchantApiKeyService, MerchantApiKeyService>();
+builder.Services.AddScoped<ICheckoutCustomizationService, CheckoutCustomizationService>();
+builder.Services.AddScoped<IWebhookService, WebhookService>();
+builder.Services.AddScoped<IMerchantPaymentMethodService, MerchantPaymentMethodService>();
+builder.Services.AddScoped<IMerchantColumnPreferenceService, MerchantColumnPreferenceService>();
+builder.Services.AddScoped<IIpWhitelistService, IpWhitelistService>();
+
 // Add HttpClientFactory for external API calls
 builder.Services.AddHttpClient();
 
@@ -312,6 +387,9 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// IP Whitelist enforcement — runs after auth so merchant MID is available
+app.UseIpWhitelist();
 
 // Health check endpoint
 app.MapGet("/health", () => new { 
