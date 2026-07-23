@@ -1,6 +1,7 @@
 
 using BankUPG.SharedKernal.Requests;
 using BankUPG.SharedKernal.Responses;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using BankUPG.Application.Interfaces.PEPStatusMaster;
 
@@ -8,6 +9,7 @@ namespace BankUPG.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = "SuperAdmin")]
     public class PepstatusMasterController : ControllerBase
     {
         private readonly IPEPStatusMasterService _pepstatusMasterService;

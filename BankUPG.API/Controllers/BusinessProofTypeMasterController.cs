@@ -1,12 +1,14 @@
 using BankUPG.Application.Interfaces.BusinessProofTypeMaster;
 using BankUPG.SharedKernal.Requests;
 using BankUPG.SharedKernal.Responses;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BankUPG.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = "SuperAdmin")]
     public class BusinessProofTypeMasterController : ControllerBase
     {
         private readonly IBusinessProofTypeMasterService _businessProofTypeMasterService;

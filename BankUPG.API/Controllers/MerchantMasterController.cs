@@ -1,12 +1,14 @@
 ﻿using BankUPG.Application.Interfaces.MerchantMaster;
 using BankUPG.SharedKernal.Requests;
 using BankUPG.SharedKernal.Responses;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BankUPG.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = "SuperAdmin")]
     public class MerchantMasterController : ControllerBase
     {
         private readonly IMerchantMasterService _merchantMasterService;
