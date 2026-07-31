@@ -88,8 +88,11 @@
             if (!data || data.source !== BRAND_NAME) return;
 
             if (data.event === 'payment.success') {
-                window.removeEventListener('message', onMessage);
-                BankUPG._closeModal();
+                // Call the merchant's handler IMMEDIATELY so server-side
+                // payment verification can run in parallel with the
+                // success screen countdown inside the checkout iframe.
+                // Do NOT close the modal here — the iframe will send
+                // payment.close_ok after its Razorpay-style countdown.
                 if (typeof handler === 'function') {
                     handler({
                         payment_id:   data.payment_id,
@@ -100,6 +103,12 @@
                         paid_at:      data.paid_at
                     });
                 }
+            }
+
+            if (data.event === 'payment.close_ok') {
+                // Checkout iframe finished its success countdown — close modal now.
+                window.removeEventListener('message', onMessage);
+                BankUPG._closeModal();
             }
 
             if (data.event === 'payment.dismiss') {

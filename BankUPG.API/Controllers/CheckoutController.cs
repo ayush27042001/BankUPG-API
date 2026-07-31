@@ -194,7 +194,7 @@ namespace BankUPG.API.Controllers
 
         private static string BuildCheckoutPage(string token, CheckoutSessionResponse session)
         {
-            var symbol = session.Currency == "INR" ? "&#x20B9;" : session.Currency;
+            var symbol = session.Currency == "INR" ? "₹" : session.Currency;
             var config = new
             {
                 token,
@@ -227,7 +227,7 @@ namespace BankUPG.API.Controllers
 <meta charset='UTF-8'>
 <meta name='viewport' content='width=device-width, initial-scale=1.0'>
 <title>__PAGE_TITLE__</title>
-<link rel='stylesheet' href='/checkout-page.css?v=3'>
+<link rel='stylesheet' href='/checkout-page.css?v=5'>
 </head>
 <body>
 <div class='pg-wrap'>
@@ -287,7 +287,8 @@ namespace BankUPG.API.Controllers
         <div class='res-ttl' id='resTtl'></div>
         <div class='res-amt' id='resAmt'></div>
         <div class='res-sub' id='resSub'></div>
-        <div class='res-id' id='resId'></div>
+        <div class='res-id'  id='resId'></div>
+        <div class='res-countdown' id='resCountdown'></div>
         <button class='retry-btn' id='retryBtn'>Try Another Method</button>
       </div>
     </div>
@@ -305,7 +306,7 @@ namespace BankUPG.API.Controllers
 </div>
 <!-- Config injected by server — parsed by checkout-page.js, never executed -->
 <script type='application/json' id='cfg-data'>__CHECKOUT_CONFIG__</script>
-<script src='/checkout-page.js?v=4'></script>
+<script src='/checkout-page.js?v=5'></script>
 <!-- all JS served from /checkout-page.js -->
 <!-- REMOVEME_START
 function init() {

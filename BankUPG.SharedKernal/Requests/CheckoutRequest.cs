@@ -47,7 +47,7 @@ namespace BankUPG.SharedKernal.Requests
         [MaxLength(100)]
         public string? CardName { get; set; }
 
-        [MaxLength(5)]
+        [MaxLength(7)]
         public string? CardExpiry { get; set; }
 
         [MaxLength(4)]
