@@ -227,103 +227,7 @@ namespace BankUPG.API.Controllers
 <meta charset='UTF-8'>
 <meta name='viewport' content='width=device-width, initial-scale=1.0'>
 <title>__PAGE_TITLE__</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Segoe UI',system-ui,-apple-system,BlinkMacSystemFont,sans-serif;background:linear-gradient(135deg,#1a237e 0%,#283593 50%,#1565c0 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;}
-.pg-wrap{display:flex;max-width:860px;width:100%;border-radius:16px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.32);}
-.pg-left{width:300px;min-width:300px;background:linear-gradient(160deg,#004d40 0%,#00695c 55%,#00796b 100%);color:#fff;display:flex;flex-direction:column;padding:32px 24px;position:relative;overflow:hidden;}
-.pg-left::before{content:'';position:absolute;top:-70px;right:-70px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,0.07);pointer-events:none;}
-.pg-left::after{content:'';position:absolute;bottom:-50px;left:-50px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,0.05);pointer-events:none;}
-.logo-wrap{display:flex;justify-content:center;margin-bottom:14px;position:relative;z-index:1;}
-.m-logo{width:74px;height:74px;object-fit:contain;border-radius:14px;box-shadow:0 4px 18px rgba(0,0,0,0.25);}
-.m-logo-ph{width:74px;height:74px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;color:#fff;background:rgba(255,255,255,0.18);box-shadow:0 4px 18px rgba(0,0,0,0.2);}
-.m-name{text-align:center;font-size:14px;font-weight:700;color:rgba(255,255,255,0.92);margin-bottom:26px;letter-spacing:0.3px;position:relative;z-index:1;}
-.amt-lbl{font-size:10px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;position:relative;z-index:1;}
-.amt-row{display:flex;align-items:center;gap:6px;position:relative;z-index:1;}
-.amt-val{font-size:34px;font-weight:900;color:#fff;line-height:1.1;}
-.amt-chev{font-size:13px;color:rgba(255,255,255,0.6);cursor:pointer;transition:transform .2s;user-select:none;margin-top:6px;}
-.ord-dtl{background:rgba(255,255,255,0.12);border-radius:8px;padding:10px 12px;margin-top:10px;font-size:11px;color:rgba(255,255,255,0.82);line-height:1.9;display:none;position:relative;z-index:1;}
-.cust-info{margin-top:14px;position:relative;z-index:1;}
-.cust-row{display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,0.75);margin-bottom:7px;}
-.l-spacer{flex:1;}
-.sec-row{display:flex;align-items:center;gap:7px;font-size:11px;color:rgba(255,255,255,0.7);font-weight:600;margin-bottom:5px;position:relative;z-index:1;}
-.txn-lbl{font-size:10px;color:rgba(255,255,255,0.42);word-break:break-all;position:relative;z-index:1;}
-.pg-right{flex:1;background:#fff;display:flex;flex-direction:column;position:relative;min-height:520px;}
-.pg-hdr{display:flex;align-items:center;padding:13px 18px;gap:10px;border-bottom:1px solid #f0f0f0;}
-.back-btn{background:none;border:none;font-size:13px;color:#777;cursor:pointer;padding:5px 12px;border-radius:20px;transition:background .2s,color .2s;display:flex;align-items:center;gap:4px;}
-.back-btn:hover{background:#f5f5f5;color:#333;}
-.pg-hdr-title{flex:1;text-align:center;font-size:13px;font-weight:700;color:#444;}
-.hdr-avatar{width:32px;height:32px;border-radius:50%;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:16px;}
-.opt-label{font-size:10px;font-weight:700;color:#bbb;letter-spacing:2px;padding:14px 20px 6px;text-transform:uppercase;}
-.opt-list{flex:1;overflow-y:auto;}
-.opt-row{border-bottom:1px solid #f3f3f3;}
-.opt-hdr{display:flex;align-items:center;justify-content:space-between;padding:13px 20px;cursor:pointer;transition:background .15s;}
-.opt-hdr:hover{background:#fafafa;}
-.opt-row.open>.opt-hdr{background:#f5fffe;}
-.opt-info{display:flex;align-items:center;gap:13px;}
-.opt-ico-wrap{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;}
-.opt-meta{display:flex;flex-direction:column;gap:2px;}
-.opt-lbl{font-size:14px;font-weight:600;color:#222;}
-.opt-sub{font-size:11px;color:#aaa;}
-.opt-chev{font-size:13px;color:#ccc;transition:transform .25s;}
-.opt-row.open .opt-chev{transform:rotate(90deg);color:#009688;}
-.opt-form{display:none;background:#f9fafb;border-top:1px solid #efefef;}
-.opt-row.open .opt-form{display:block;}
-.fb{padding:18px 20px;display:flex;flex-direction:column;gap:13px;}
-.fld{display:flex;flex-direction:column;gap:5px;}
-.flbl{font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:0.6px;}
-.finp,.fsel{height:46px;border:1.5px solid #e0e0e0;border-radius:8px;padding:0 13px;font-size:14px;color:#333;width:100%;outline:none;transition:border .2s,box-shadow .2s;background:#fff;font-family:inherit;}
-.finp:focus,.fsel:focus{border-color:#009688;box-shadow:0 0 0 3px rgba(0,150,136,0.1);}
-.cin-wrap{position:relative;}
-.cin-wrap .finp{padding-right:76px;}
-.cbrand{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:11px;color:#888;pointer-events:none;font-weight:600;}
-.frow2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.fhint{font-size:11px;color:#bbb;margin-top:-7px;}
-.upi-logos{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.upi-logo{background:#f0f0f0;border-radius:12px;padding:3px 10px;font-size:11px;font-weight:600;color:#666;}
-.wallet-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
-.w-item{background:#f5f5f5;border-radius:10px;padding:13px 6px;text-align:center;font-size:12px;font-weight:600;color:#555;cursor:pointer;transition:all .2s;border:2px solid transparent;}
-.w-item:hover,.w-item.sel{background:#e0f2f1;border-color:#009688;color:#009688;}
-.emi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
-.emi-item{background:#f5f5f5;border-radius:8px;padding:12px 4px;text-align:center;font-size:12px;font-weight:600;color:#555;cursor:pointer;border:2px solid transparent;transition:all .2s;}
-.emi-item:hover,.emi-item.sel{background:#e0f2f1;border-color:#009688;color:#009688;}
-.pl-box{background:linear-gradient(135deg,#e8f5e9,#e0f2f1);border-radius:10px;padding:18px;text-align:center;}
-.pl-ico{font-size:34px;margin-bottom:8px;}
-.pl-box p{font-size:13px;color:#555;line-height:1.7;}
-.pl-prov{margin-top:8px;font-size:11px;color:#888;}
-.err-box{font-size:12px;color:#c62828;background:#ffeaea;border-radius:7px;padding:9px 12px;display:none;}
-.err-box.show{display:block;}
-.pay-btn{height:48px;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s,transform .15s;background:#009688;letter-spacing:0.2px;}
-.pay-btn:hover:not(:disabled){opacity:0.91;transform:translateY(-1px);}
-.pay-btn:active:not(:disabled){transform:translateY(0);}
-.pay-btn:disabled{opacity:0.6;cursor:not-allowed;}
-.spin{width:15px;height:15px;border:2.5px solid rgba(255,255,255,0.35);border-top-color:#fff;border-radius:50%;animation:sp .65s linear infinite;display:inline-block;vertical-align:middle;}
-@keyframes sp{to{transform:rotate(360deg);}}
-.res-ov{position:absolute;inset:0;background:#fff;align-items:center;justify-content:center;padding:32px;z-index:10;display:none;}
-.res-box{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;max-width:300px;}
-.res-ico{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;}
-.res-ico.ok{background:#e8f5e9;color:#2e7d32;}
-.res-ico.fail{background:#fce4ec;color:#c62828;}
-.res-ttl{font-size:22px;font-weight:800;color:#222;}
-.res-amt{font-size:28px;font-weight:900;}
-.res-sub{font-size:13px;color:#888;line-height:1.6;}
-.res-id{background:#f5f7fa;border-radius:8px;padding:10px 16px;font-size:12px;color:#666;width:100%;word-break:break-all;display:none;}
-.retry-btn{padding:10px 28px;border:2px solid #009688;background:transparent;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;color:#009688;display:none;transition:all .2s;}
-.retry-btn:hover{background:#009688;color:#fff;}
-.pg-foot{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-top:1px solid #f0f0f0;}
-.pow-by{font-size:10px;color:#ccc;font-weight:600;letter-spacing:0.3px;}
-.net-tags{display:flex;gap:6px;}
-.net-tag{font-size:10px;color:#ccc;font-weight:700;letter-spacing:0.3px;}
-@media(max-width:660px){
-.pg-wrap{flex-direction:column;}
-.pg-left{width:100%;min-width:unset;padding:20px;flex-direction:row;flex-wrap:wrap;align-items:center;gap:14px;}
-.logo-wrap,.m-name,.l-spacer{margin-bottom:0;}
-.l-spacer{display:none;}
-.amt-val{font-size:26px;}
-.pg-left::before,.pg-left::after{display:none;}
-.emi-grid{grid-template-columns:repeat(2,1fr);}
-}
-</style>
+<link rel='stylesheet' href='/checkout-page.css'>
 </head>
 <body>
 <div class='pg-wrap'>
@@ -377,18 +281,13 @@ body{font-family:'Segoe UI',system-ui,-apple-system,BlinkMacSystemFont,sans-seri
   </div>
 </div>
 <script>
+/* Injected by server — defines the session config for checkout-page.js */
 var cfg = null, activeMd = null, selEmiMonths = 3;
 try { cfg = __CHECKOUT_CONFIG__; } catch(e) { cfg = null; }
-
-var modeInfo = {
-  'UPI':        { lbl:'UPI',                 sub:'GPay, PhonePe, Paytm & more', ico:'⚡', bg:'#fff9e6' },
-  'Card':       { lbl:'Credit / Debit Card', sub:'Visa, Mastercard, RuPay',     ico:'💳', bg:'#e3f2fd' },
-  'NetBanking': { lbl:'Net Banking',         sub:'All major banks supported',   ico:'🏦', bg:'#e8f5e9' },
-  'Wallet':     { lbl:'Wallet',              sub:'Paytm, PhonePe, MobiKwik',    ico:'👛', bg:'#fce4ec' },
-  'EMI':        { lbl:'EMI',                 sub:'Easy monthly installments',   ico:'📅', bg:'#ede7f6' },
-  'PayLater':   { lbl:'Pay Later',           sub:'Buy now, pay in 30 days',     ico:'⏰', bg:'#e0f7fa' }
-};
-
+</script>
+<script src='/checkout-page.js'></script>
+<!-- all JS served from /checkout-page.js -->
+<!-- REMOVEME_START
 function init() {
   if (!cfg) {
     var ol = document.getElementById('optList');
@@ -643,7 +542,7 @@ function showResult(ok, pid, mode, msg, rdUrl, sig) {
 }
 
 window.addEventListener('DOMContentLoaded', init);
-</script>
+REMOVEME_END -->
 </body>
 </html>
 """;
