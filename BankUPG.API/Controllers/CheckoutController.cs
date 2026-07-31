@@ -229,295 +229,420 @@ namespace BankUPG.API.Controllers
 <title>__PAGE_TITLE__</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f0f2f5;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;}
-.checkout-wrap{display:flex;max-width:840px;width:100%;background:#fff;border-radius:14px;box-shadow:0 8px 48px rgba(0,0,0,0.13);overflow:hidden;}
-.checkout-left{width:300px;min-width:300px;background:#fff;border-right:1px solid #f0f0f0;display:flex;flex-direction:column;padding:32px 24px;}
-.logo-wrap{display:flex;justify-content:center;margin-bottom:12px;}
-.m-logo{width:80px;height:80px;object-fit:contain;border-radius:14px;}
-.m-logo-ph{width:80px;height:80px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;color:#fff;}
-.m-name{text-align:center;font-size:15px;font-weight:700;color:#222;margin-bottom:28px;}
-.amount-label{font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
-.amount-row{display:flex;align-items:baseline;gap:6px;}
-.amount-val{font-size:34px;font-weight:900;}
-.amount-chev{font-size:16px;color:#aaa;cursor:pointer;user-select:none;margin-left:4px;transition:transform .2s;}
-.order-dtl{background:#f9f9f9;border-radius:8px;padding:12px 14px;margin-top:10px;font-size:12px;color:#666;line-height:1.9;display:none;}
-.left-spacer{flex:1;}
-.secure-row{display:flex;align-items:center;gap:6px;font-size:12px;color:#009688;font-weight:600;margin-bottom:6px;}
-.txn-label{font-size:11px;color:#bbb;}
-svg.shield{flex-shrink:0;}
-.checkout-right{flex:1;display:flex;flex-direction:column;position:relative;min-height:500px;}
-.right-hdr{display:flex;align-items:center;padding:13px 18px;color:#fff;gap:10px;}
-.back-btn{background:rgba(255,255,255,.18);border:none;color:#fff;padding:5px 14px;border-radius:20px;cursor:pointer;font-size:13px;transition:background .2s;}
-.back-btn:hover{background:rgba(255,255,255,.28);}
-.hdr-spacer{flex:1;}
-.hdr-icon{font-size:20px;}
-.opt-label{font-size:11px;font-weight:700;color:#aaa;letter-spacing:1.5px;padding:14px 20px 6px;}
+body{font-family:'Segoe UI',system-ui,-apple-system,BlinkMacSystemFont,sans-serif;background:linear-gradient(135deg,#1a237e 0%,#283593 50%,#1565c0 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;}
+.pg-wrap{display:flex;max-width:860px;width:100%;border-radius:16px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.32);}
+.pg-left{width:300px;min-width:300px;background:linear-gradient(160deg,#004d40 0%,#00695c 55%,#00796b 100%);color:#fff;display:flex;flex-direction:column;padding:32px 24px;position:relative;overflow:hidden;}
+.pg-left::before{content:'';position:absolute;top:-70px;right:-70px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,0.07);pointer-events:none;}
+.pg-left::after{content:'';position:absolute;bottom:-50px;left:-50px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,0.05);pointer-events:none;}
+.logo-wrap{display:flex;justify-content:center;margin-bottom:14px;position:relative;z-index:1;}
+.m-logo{width:74px;height:74px;object-fit:contain;border-radius:14px;box-shadow:0 4px 18px rgba(0,0,0,0.25);}
+.m-logo-ph{width:74px;height:74px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;color:#fff;background:rgba(255,255,255,0.18);box-shadow:0 4px 18px rgba(0,0,0,0.2);}
+.m-name{text-align:center;font-size:14px;font-weight:700;color:rgba(255,255,255,0.92);margin-bottom:26px;letter-spacing:0.3px;position:relative;z-index:1;}
+.amt-lbl{font-size:10px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;position:relative;z-index:1;}
+.amt-row{display:flex;align-items:center;gap:6px;position:relative;z-index:1;}
+.amt-val{font-size:34px;font-weight:900;color:#fff;line-height:1.1;}
+.amt-chev{font-size:13px;color:rgba(255,255,255,0.6);cursor:pointer;transition:transform .2s;user-select:none;margin-top:6px;}
+.ord-dtl{background:rgba(255,255,255,0.12);border-radius:8px;padding:10px 12px;margin-top:10px;font-size:11px;color:rgba(255,255,255,0.82);line-height:1.9;display:none;position:relative;z-index:1;}
+.cust-info{margin-top:14px;position:relative;z-index:1;}
+.cust-row{display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,0.75);margin-bottom:7px;}
+.l-spacer{flex:1;}
+.sec-row{display:flex;align-items:center;gap:7px;font-size:11px;color:rgba(255,255,255,0.7);font-weight:600;margin-bottom:5px;position:relative;z-index:1;}
+.txn-lbl{font-size:10px;color:rgba(255,255,255,0.42);word-break:break-all;position:relative;z-index:1;}
+.pg-right{flex:1;background:#fff;display:flex;flex-direction:column;position:relative;min-height:520px;}
+.pg-hdr{display:flex;align-items:center;padding:13px 18px;gap:10px;border-bottom:1px solid #f0f0f0;}
+.back-btn{background:none;border:none;font-size:13px;color:#777;cursor:pointer;padding:5px 12px;border-radius:20px;transition:background .2s,color .2s;display:flex;align-items:center;gap:4px;}
+.back-btn:hover{background:#f5f5f5;color:#333;}
+.pg-hdr-title{flex:1;text-align:center;font-size:13px;font-weight:700;color:#444;}
+.hdr-avatar{width:32px;height:32px;border-radius:50%;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.opt-label{font-size:10px;font-weight:700;color:#bbb;letter-spacing:2px;padding:14px 20px 6px;text-transform:uppercase;}
 .opt-list{flex:1;overflow-y:auto;}
-.opt-row{border-bottom:1px solid #f5f5f5;}
-.opt-row.active .opt-hdr{background:#f4fffe;}
-.opt-hdr{display:flex;align-items:center;justify-content:space-between;padding:15px 20px;cursor:pointer;transition:background .15s;}
-.opt-hdr:hover{background:#f9f9f9;}
-.opt-info{display:flex;align-items:center;gap:12px;}
-.opt-ico{font-size:18px;width:26px;text-align:center;}
-.opt-lbl{font-size:14px;font-weight:500;color:#333;}
-.opt-chev{font-size:22px;color:#ccc;transition:transform .25s;line-height:1;}
-.opt-form{background:#fafafa;border-top:1px solid #efefef;}
+.opt-row{border-bottom:1px solid #f3f3f3;}
+.opt-hdr{display:flex;align-items:center;justify-content:space-between;padding:13px 20px;cursor:pointer;transition:background .15s;}
+.opt-hdr:hover{background:#fafafa;}
+.opt-row.open>.opt-hdr{background:#f5fffe;}
+.opt-info{display:flex;align-items:center;gap:13px;}
+.opt-ico-wrap{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;}
+.opt-meta{display:flex;flex-direction:column;gap:2px;}
+.opt-lbl{font-size:14px;font-weight:600;color:#222;}
+.opt-sub{font-size:11px;color:#aaa;}
+.opt-chev{font-size:13px;color:#ccc;transition:transform .25s;}
+.opt-row.open .opt-chev{transform:rotate(90deg);color:#009688;}
+.opt-form{display:none;background:#f9fafb;border-top:1px solid #efefef;}
+.opt-row.open .opt-form{display:block;}
 .fb{padding:18px 20px;display:flex;flex-direction:column;gap:13px;}
-fieldset{border:none;padding:0;margin:0;}
-.fgl{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;display:block;}
-input,.fsel{height:46px;border:1.5px solid #e0e0e0;border-radius:8px;padding:0 13px;font-size:14px;color:#333;width:100%;outline:none;transition:border .2s,box-shadow .2s;background:#fff;}
-input:focus,.fsel:focus{border-color:#009688;box-shadow:0 0 0 3px rgba(0,150,136,.1);}
+.fld{display:flex;flex-direction:column;gap:5px;}
+.flbl{font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:0.6px;}
+.finp,.fsel{height:46px;border:1.5px solid #e0e0e0;border-radius:8px;padding:0 13px;font-size:14px;color:#333;width:100%;outline:none;transition:border .2s,box-shadow .2s;background:#fff;font-family:inherit;}
+.finp:focus,.fsel:focus{border-color:#009688;box-shadow:0 0 0 3px rgba(0,150,136,0.1);}
 .cin-wrap{position:relative;}
-.cin-wrap input{padding-right:76px;}
-.cbrand{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:12px;color:#777;pointer-events:none;}
-.frow{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
-.fhint{font-size:11px;color:#bbb;margin-top:-8px;}
-.upi-apps{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.upi-apps span{font-size:12px;color:#aaa;}
-.upi-app{background:#f2f2f2;border-radius:14px;padding:3px 11px;font-size:11px;font-weight:600;color:#555;}
-.wallet-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
-.w-item{background:#f5f5f5;border-radius:10px;padding:14px 6px;text-align:center;font-size:12px;font-weight:600;color:#555;cursor:pointer;transition:all .2s;border:2px solid transparent;}
-.w-item:hover{background:#e0f2f1;border-color:#009688;color:#009688;}
+.cin-wrap .finp{padding-right:76px;}
+.cbrand{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:11px;color:#888;pointer-events:none;font-weight:600;}
+.frow2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.fhint{font-size:11px;color:#bbb;margin-top:-7px;}
+.upi-logos{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.upi-logo{background:#f0f0f0;border-radius:12px;padding:3px 10px;font-size:11px;font-weight:600;color:#666;}
+.wallet-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+.w-item{background:#f5f5f5;border-radius:10px;padding:13px 6px;text-align:center;font-size:12px;font-weight:600;color:#555;cursor:pointer;transition:all .2s;border:2px solid transparent;}
+.w-item:hover,.w-item.sel{background:#e0f2f1;border-color:#009688;color:#009688;}
 .emi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
 .emi-item{background:#f5f5f5;border-radius:8px;padding:12px 4px;text-align:center;font-size:12px;font-weight:600;color:#555;cursor:pointer;border:2px solid transparent;transition:all .2s;}
 .emi-item:hover,.emi-item.sel{background:#e0f2f1;border-color:#009688;color:#009688;}
-.pl-box{background:#f5f0ff;border-radius:10px;padding:18px;text-align:center;}
-.pl-ico{font-size:36px;margin-bottom:8px;}
+.pl-box{background:linear-gradient(135deg,#e8f5e9,#e0f2f1);border-radius:10px;padding:18px;text-align:center;}
+.pl-ico{font-size:34px;margin-bottom:8px;}
 .pl-box p{font-size:13px;color:#555;line-height:1.7;}
-.pl-prov{margin-top:8px;font-size:12px;color:#999;}
-.err{font-size:12px;color:#d32f2f;background:#ffeaea;border-radius:6px;padding:8px 12px;display:none;}
-.pay-btn{height:50px;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s,transform .1s;}
-.pay-btn:hover{opacity:.9;transform:translateY(-1px);}
-.pay-btn:active{transform:translateY(0);}
-.pay-btn:disabled{opacity:.6;cursor:not-allowed;transform:none;}
-.spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .6s linear infinite;display:inline-block;}
+.pl-prov{margin-top:8px;font-size:11px;color:#888;}
+.err-box{font-size:12px;color:#c62828;background:#ffeaea;border-radius:7px;padding:9px 12px;display:none;}
+.err-box.show{display:block;}
+.pay-btn{height:48px;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s,transform .15s;background:#009688;letter-spacing:0.2px;}
+.pay-btn:hover:not(:disabled){opacity:0.91;transform:translateY(-1px);}
+.pay-btn:active:not(:disabled){transform:translateY(0);}
+.pay-btn:disabled{opacity:0.6;cursor:not-allowed;}
+.spin{width:15px;height:15px;border:2.5px solid rgba(255,255,255,0.35);border-top-color:#fff;border-radius:50%;animation:sp .65s linear infinite;display:inline-block;vertical-align:middle;}
 @keyframes sp{to{transform:rotate(360deg);}}
-.result-ov{position:absolute;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;padding:32px;z-index:10;}
-.result-box{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;}
-.r-ico{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;}
-.r-ico.ok{background:#e8f5e9;color:#2e7d32;}
-.r-ico.fail{background:#fce4ec;color:#c62828;}
-.r-ttl{font-size:22px;font-weight:800;color:#222;}
-.r-amt{font-size:30px;font-weight:900;}
-.r-sub{font-size:14px;color:#888;}
-.r-id{background:#f5f7fa;border-radius:8px;padding:10px 16px;font-size:12px;color:#666;width:100%;word-break:break-all;}
-.retry-btn{padding:10px 28px;border:2px solid;background:transparent;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;}
-.right-foot{display:flex;align-items:center;justify-content:space-between;padding:11px 20px;border-top:1px solid #f0f0f0;}
-.pow-by{font-size:11px;color:#bbb;}
-.nets{font-size:11px;color:#bbb;font-weight:600;}
-@media(max-width:640px){
-.checkout-wrap{flex-direction:column;}
-.checkout-left{width:100%;min-width:unset;border-right:none;border-bottom:1px solid #f0f0f0;padding:20px;flex-direction:row;flex-wrap:wrap;align-items:center;gap:12px;}
-.logo-wrap,.m-name{margin-bottom:0;}
-.left-spacer{display:none;}
+.res-ov{position:absolute;inset:0;background:#fff;align-items:center;justify-content:center;padding:32px;z-index:10;display:none;}
+.res-box{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;max-width:300px;}
+.res-ico{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;}
+.res-ico.ok{background:#e8f5e9;color:#2e7d32;}
+.res-ico.fail{background:#fce4ec;color:#c62828;}
+.res-ttl{font-size:22px;font-weight:800;color:#222;}
+.res-amt{font-size:28px;font-weight:900;}
+.res-sub{font-size:13px;color:#888;line-height:1.6;}
+.res-id{background:#f5f7fa;border-radius:8px;padding:10px 16px;font-size:12px;color:#666;width:100%;word-break:break-all;display:none;}
+.retry-btn{padding:10px 28px;border:2px solid #009688;background:transparent;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;color:#009688;display:none;transition:all .2s;}
+.retry-btn:hover{background:#009688;color:#fff;}
+.pg-foot{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-top:1px solid #f0f0f0;}
+.pow-by{font-size:10px;color:#ccc;font-weight:600;letter-spacing:0.3px;}
+.net-tags{display:flex;gap:6px;}
+.net-tag{font-size:10px;color:#ccc;font-weight:700;letter-spacing:0.3px;}
+@media(max-width:660px){
+.pg-wrap{flex-direction:column;}
+.pg-left{width:100%;min-width:unset;padding:20px;flex-direction:row;flex-wrap:wrap;align-items:center;gap:14px;}
+.logo-wrap,.m-name,.l-spacer{margin-bottom:0;}
+.l-spacer{display:none;}
+.amt-val{font-size:26px;}
+.pg-left::before,.pg-left::after{display:none;}
 .emi-grid{grid-template-columns:repeat(2,1fr);}
 }
 </style>
 </head>
 <body>
-<div class='checkout-wrap'>
-  <div class='checkout-left'>
+<div class='pg-wrap'>
+  <div class='pg-left'>
     <div class='logo-wrap' id='logoWrap'></div>
     <div class='m-name' id='mName'></div>
-    <div>
-      <div class='amount-label'>Total Payable</div>
-      <div class='amount-row'>
-        <span class='amount-val' id='amtVal'></span>
-        <span class='amount-chev' id='amtChev' onclick='togDtl()'>&#x25BE;</span>
+    <div style='position:relative;z-index:1'>
+      <div class='amt-lbl'>Total Payable</div>
+      <div class='amt-row'>
+        <span class='amt-val' id='amtVal'></span>
+        <span class='amt-chev' id='amtChev' onclick='togDtl()'>&#9660;</span>
       </div>
+      <div class='ord-dtl' id='ordDtl'></div>
     </div>
-    <div class='order-dtl' id='ordDtl'></div>
-    <div class='left-spacer'></div>
+    <div class='cust-info' id='custInfo'></div>
+    <div class='l-spacer'></div>
     <div>
-      <div class='secure-row'>
-        <svg class='shield' width='13' height='15' viewBox='0 0 13 15' fill='none'><path d='M6.5 0L0 2.7v4.9c0 3.6 2.8 6.9 6.5 7.6 3.7-.7 6.5-4 6.5-7.6V2.7L6.5 0z' fill='#009688'/></svg>
-        Secure Checkout
+      <div class='sec-row'>
+        <svg width='13' height='15' viewBox='0 0 13 15' fill='none' style='flex-shrink:0'><path d='M6.5 0L0 2.7v4.9c0 3.6 2.8 6.9 6.5 7.6 3.7-.7 6.5-4 6.5-7.6V2.7L6.5 0z' fill='rgba(255,255,255,0.7)'/></svg>
+        Secured by BankUPG
       </div>
-      <div class='txn-label' id='txnLbl'></div>
+      <div class='txn-lbl' id='txnLbl'></div>
     </div>
   </div>
-  <div class='checkout-right'>
-    <div class='right-hdr' id='rightHdr'>
-      <button class='back-btn' onclick='handleBack()'>&#x2190; Back</button>
-      <div class='hdr-spacer'></div>
-      <div class='hdr-icon'>&#x1F464;</div>
+  <div class='pg-right'>
+    <div class='pg-hdr'>
+      <button class='back-btn' onclick='handleBack()'>&#8592; Back</button>
+      <span class='pg-hdr-title'>Pay Securely</span>
+      <div class='hdr-avatar'>&#x1F464;</div>
     </div>
-    <div class='opt-label'>PAYMENT OPTIONS</div>
+    <div class='opt-label'>Choose Payment Method</div>
     <div class='opt-list' id='optList'></div>
-    <div class='result-ov' id='resultOv' style='display:none'>
-      <div class='result-box'>
-        <div class='r-ico' id='rIco'></div>
-        <div class='r-ttl' id='rTtl'></div>
-        <div class='r-amt' id='rAmt'></div>
-        <div class='r-sub' id='rSub'></div>
-        <div class='r-id' id='rId' style='display:none'></div>
-        <button class='retry-btn' id='retryBtn' onclick='location.reload()' style='display:none'>Try Another Method</button>
+    <div class='res-ov' id='resOv'>
+      <div class='res-box'>
+        <div class='res-ico' id='resIco'></div>
+        <div class='res-ttl' id='resTtl'></div>
+        <div class='res-amt' id='resAmt'></div>
+        <div class='res-sub' id='resSub'></div>
+        <div class='res-id' id='resId'></div>
+        <button class='retry-btn' id='retryBtn' onclick='location.reload()'>Try Another Method</button>
       </div>
     </div>
-    <div class='right-foot'>
-      <span class='pow-by'>Powered by BankU</span>
-      <span class='nets'>VISA &#x2022; Mastercard &#x2022; RuPay</span>
+    <div class='pg-foot'>
+      <span class='pow-by'>Powered by BankUPG</span>
+      <div class='net-tags'>
+        <span class='net-tag'>VISA</span>
+        <span class='net-tag'>MASTERCARD</span>
+        <span class='net-tag'>RUPAY</span>
+      </div>
     </div>
   </div>
 </div>
 <script>
-var cfg=__CHECKOUT_CONFIG__;
-var modeMap={
-  'UPI':{lbl:'UPI',ico:'&#x26A1;'},
-  'Card':{lbl:'Cards',ico:'&#x1F4B3;'},
-  'NetBanking':{lbl:'Net Banking',ico:'&#x1F3E6;'},
-  'Wallet':{lbl:'Wallet',ico:'&#x1F45D;'},
-  'EMI':{lbl:'EMI',ico:'&#x1F4C5;'},
-  'PayLater':{lbl:'Pay Later',ico:'&#x23F0;'}
+var cfg = null, activeMd = null, selEmiMonths = 3;
+try { cfg = __CHECKOUT_CONFIG__; } catch(e) { cfg = null; }
+
+var modeInfo = {
+  'UPI':        { lbl:'UPI',                 sub:'GPay, PhonePe, Paytm & more', ico:'⚡', bg:'#fff9e6' },
+  'Card':       { lbl:'Credit / Debit Card', sub:'Visa, Mastercard, RuPay',     ico:'💳', bg:'#e3f2fd' },
+  'NetBanking': { lbl:'Net Banking',         sub:'All major banks supported',   ico:'🏦', bg:'#e8f5e9' },
+  'Wallet':     { lbl:'Wallet',              sub:'Paytm, PhonePe, MobiKwik',    ico:'👛', bg:'#fce4ec' },
+  'EMI':        { lbl:'EMI',                 sub:'Easy monthly installments',   ico:'📅', bg:'#ede7f6' },
+  'PayLater':   { lbl:'Pay Later',           sub:'Buy now, pay in 30 days',     ico:'⏰', bg:'#e0f7fa' }
 };
-var activeMd=null,selEmi=3;
-function init(){
-  document.documentElement.style.setProperty('--pc',cfg.primaryColor);
-  document.getElementById('mName').textContent=cfg.merchantName;
-  var lw=document.getElementById('logoWrap');
-  if(cfg.logoUrl){
-    lw.innerHTML='<img class="m-logo" src="'+cfg.logoUrl+'" alt="'+cfg.merchantName+'">';
-  }else{
-    lw.innerHTML='<div class="m-logo-ph" style="background:'+cfg.primaryColor+'">'+cfg.merchantName.charAt(0).toUpperCase()+'</div>';
+
+function init() {
+  if (!cfg) {
+    var ol = document.getElementById('optList');
+    if (ol) ol.innerHTML = '<div style="padding:24px 20px;text-align:center;color:#d32f2f;font-size:13px;">Unable to load payment session.<br>Please go back and try again.</div>';
+    return;
   }
-  document.getElementById('amtVal').innerHTML='<span style="color:'+cfg.primaryColor+'">'+cfg.amountSymbol+cfg.amount+'</span>';
-  var dtl=document.getElementById('ordDtl');
-  dtl.innerHTML='Order Ref: '+cfg.orderRef+'<br>'+(cfg.customerName?'Customer: '+cfg.customerName+'<br>':'')+(cfg.customerEmail?'Email: '+cfg.customerEmail+'<br>':'')+(cfg.customerPhone?'Phone: '+cfg.customerPhone:'');
-  document.getElementById('txnLbl').textContent='Transaction Id : '+cfg.orderRef;
-  document.getElementById('rightHdr').style.background=cfg.primaryColor;
-  buildList();
+  var modes = (cfg.modes && cfg.modes.length > 0) ? cfg.modes : ['UPI', 'Card', 'NetBanking'];
+  var pc = cfg.primaryColor || '#009688';
+
+  var mName = document.getElementById('mName');
+  if (mName) mName.textContent = cfg.merchantName || 'BankUPG';
+
+  var lw = document.getElementById('logoWrap');
+  if (lw) {
+    if (cfg.logoUrl) {
+      lw.innerHTML = '<img class="m-logo" src="' + cfg.logoUrl + '" alt="logo">';
+    } else {
+      lw.innerHTML = '<div class="m-logo-ph">' + (cfg.merchantName || 'B').charAt(0).toUpperCase() + '</div>';
+    }
+  }
+
+  var amtEl = document.getElementById('amtVal');
+  if (amtEl) amtEl.innerHTML = (cfg.amountSymbol || '') + (cfg.amount || '');
+
+  var ordDtl = document.getElementById('ordDtl');
+  if (ordDtl) ordDtl.innerHTML = 'Order Ref: <strong>' + (cfg.orderRef || '') + '</strong>';
+
+  var ci = document.getElementById('custInfo');
+  if (ci && (cfg.customerName || cfg.customerEmail)) {
+    var ch = '';
+    if (cfg.customerName) ch += '<div class="cust-row"><span>&#x1F464;</span>' + cfg.customerName + '</div>';
+    if (cfg.customerEmail) ch += '<div class="cust-row"><span>&#x2709;</span>' + cfg.customerEmail + '</div>';
+    if (cfg.customerPhone) ch += '<div class="cust-row"><span>&#x1F4F1;</span>' + cfg.customerPhone + '</div>';
+    ci.innerHTML = ch;
+  }
+
+  var txnLbl = document.getElementById('txnLbl');
+  if (txnLbl) txnLbl.textContent = 'Ref: ' + (cfg.orderRef || '');
+
+  buildList(modes, pc);
 }
-function togDtl(){
-  var d=document.getElementById('ordDtl'),c=document.getElementById('amtChev');
-  var show=d.style.display==='none';
-  d.style.display=show?'block':'none';
-  c.style.transform=show?'rotate(180deg)':'';
-}
-function buildList(){
-  var ol=document.getElementById('optList');
-  ol.innerHTML='';
-  cfg.modes.forEach(function(m){
-    var mc=modeMap[m]||{lbl:m,ico:'&#x1F4B0;'};
-    var row=document.createElement('div');
-    row.className='opt-row';
-    row.id='row-'+m;
-    row.innerHTML='<div class="opt-hdr" onclick="togMode(\''+m+'\')">'+'<div class="opt-info"><span class="opt-ico">'+mc.ico+'</span><span class="opt-lbl">'+mc.lbl+'</span></div>'+'<span class="opt-chev" id="chev-'+m+'">&#x203A;</span>'+'</div>'+'<div class="opt-form" id="form-'+m+'" style="display:none">'+ buildForm(m)+'</div>';
+
+function buildList(modes, pc) {
+  var ol = document.getElementById('optList');
+  if (!ol) return;
+  ol.innerHTML = '';
+  modes.forEach(function(m) {
+    var mi = modeInfo[m] || { lbl: m, sub: '', ico: '💰', bg: '#f5f5f5' };
+    var row = document.createElement('div');
+    row.className = 'opt-row';
+    row.id = 'row-' + m;
+    row.innerHTML =
+      '<div class="opt-hdr" onclick="togMode(\'' + m + '\')">' +
+        '<div class="opt-info">' +
+          '<div class="opt-ico-wrap" style="background:' + mi.bg + '">' + mi.ico + '</div>' +
+          '<div class="opt-meta">' +
+            '<span class="opt-lbl">' + mi.lbl + '</span>' +
+            '<span class="opt-sub">' + mi.sub + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<span class="opt-chev" id="chev-' + m + '">&#9658;</span>' +
+      '</div>' +
+      '<div class="opt-form" id="form-' + m + '">' + buildForm(m, pc) + '</div>';
     ol.appendChild(row);
   });
 }
-function buildForm(m){
-  var p=cfg.amountSymbol+cfg.amount,btn='';
-  if(m==='Card'){return '<div class="fb"><fieldset><span class="fgl">Card Number</span><div class="cin-wrap"><input type="text" id="cardNum" placeholder="0000 0000 0000 0000" maxlength="19" oninput="fmtCard(this)"><span class="cbrand" id="cbrand">&#x1F4B3;</span></div></fieldset><fieldset><span class="fgl">Name on Card</span><input type="text" id="cardName" placeholder="JOHN SMITH" value="'+cfg.customerName+'"></fieldset><div class="frow"><fieldset><span class="fgl">Expiry (MM/YY)</span><input type="text" id="cardExp" placeholder="MM / YY" maxlength="7" oninput="fmtExp(this)"></fieldset><fieldset><span class="fgl">CVV</span><input type="password" id="cardCvv" placeholder="&#x2022;&#x2022;&#x2022;" maxlength="4"></fieldset></div><div class="err" id="cardErr"></div><button class="pay-btn" id="payCardBtn" onclick="payCard()" style="background:'+cfg.primaryColor+'">Pay '+p+'</button></div>';}
-  if(m==='UPI'){return '<div class="fb"><fieldset><span class="fgl">UPI ID / VPA</span><input type="text" id="upiVpa" placeholder="yourname@okhdfc"><div class="fhint">Enter your UPI ID linked to any bank</div></fieldset><div class="upi-apps"><span>Pay using:</span><span class="upi-app">GPay</span><span class="upi-app">PhonePe</span><span class="upi-app">Paytm</span><span class="upi-app">BHIM</span></div><div class="err" id="upiErr"></div><button class="pay-btn" id="payUpiBtn" onclick="payUpi()" style="background:'+cfg.primaryColor+'">Pay '+p+'</button></div>';}
-  if(m==='NetBanking'){return '<div class="fb"><fieldset><span class="fgl">Select Your Bank</span><select id="bankCode" class="fsel"><option value="">-- Select Bank --</option><option value="HDFCBANK">HDFC Bank</option><option value="SBIN">State Bank of India</option><option value="ICICIBANK">ICICI Bank</option><option value="AXISBANK">Axis Bank</option><option value="KOTAKBANK">Kotak Mahindra Bank</option><option value="INDUSIND">IndusInd Bank</option><option value="YESBANK">Yes Bank</option><option value="PNBRETAIL">Punjab National Bank</option><option value="BOBIRETAIL">Bank of Baroda</option><option value="UNIONBANK">Union Bank of India</option></select></fieldset><div class="err" id="nbErr"></div><button class="pay-btn" id="payNbBtn" onclick="payNb()" style="background:'+cfg.primaryColor+'">Pay '+p+'</button></div>';}
-  if(m==='Wallet'){return '<div class="fb"><fieldset><span class="fgl">Select Wallet</span><div class="wallet-grid"><div class="w-item" onclick="payWallet(this,\'Paytm\')">Paytm</div><div class="w-item" onclick="payWallet(this,\'PhonePe\')">PhonePe</div><div class="w-item" onclick="payWallet(this,\'Mobikwik\')">MobiKwik</div><div class="w-item" onclick="payWallet(this,\'Airtel\')">Airtel</div><div class="w-item" onclick="payWallet(this,\'Ola\')">Ola Money</div><div class="w-item" onclick="payWallet(this,\'Amazon\')">Amazon Pay</div></div></fieldset><div class="err" id="walletErr"></div></div>';}
-  if(m==='EMI'){return '<div class="fb"><fieldset><span class="fgl">Card Number</span><div class="cin-wrap"><input type="text" id="emiCard" placeholder="0000 0000 0000 0000" maxlength="19" oninput="fmtCardG(this)"><span class="cbrand">&#x1F4B3;</span></div></fieldset><fieldset><span class="fgl">Select Tenure</span><div class="emi-grid"><div class="emi-item sel" onclick="selEmiF(this,3)">3 Months</div><div class="emi-item" onclick="selEmiF(this,6)">6 Months</div><div class="emi-item" onclick="selEmiF(this,9)">9 Months</div><div class="emi-item" onclick="selEmiF(this,12)">12 Months</div></div></fieldset><div class="err" id="emiErr"></div><button class="pay-btn" id="payEmiBtn" onclick="payEmi()" style="background:'+cfg.primaryColor+'">Pay '+p+' via EMI</button></div>';}
-  if(m==='PayLater'){return '<div class="fb"><div class="pl-box"><div class="pl-ico">&#x23F0;</div><p>Pay now &amp; get 30 days to pay back with zero interest.</p><p class="pl-prov">Available via: <strong>Simpl</strong>, <strong>LazyPay</strong>, <strong>ZestMoney</strong></p></div><div class="err" id="plErr"></div><button class="pay-btn" id="payPlBtn" onclick="payPL()" style="background:'+cfg.primaryColor+'">Pay '+p+' via Pay Later</button></div>';}
-  return '<div class="fb"><button class="pay-btn" onclick="payGen(\''+m+'\')" style="background:'+cfg.primaryColor+'">Pay '+p+'</button></div>';
+
+function buildForm(m, pc) {
+  var sym = cfg.amountSymbol || '', amt = cfg.amount || '', p = sym + amt;
+  if (m === 'Card') return '<div class="fb">' +
+    '<div class="fld"><span class="flbl">Card Number</span>' +
+    '<div class="cin-wrap"><input class="finp" type="text" id="cardNum" placeholder="0000 0000 0000 0000" maxlength="19" oninput="fmtCard(this)" autocomplete="cc-number">' +
+    '<span class="cbrand" id="cbrand">💳</span></div></div>' +
+    '<div class="fld"><span class="flbl">Name on Card</span>' +
+    '<input class="finp" type="text" id="cardName" placeholder="JOHN SMITH" value="' + (cfg.customerName || '') + '" autocomplete="cc-name"></div>' +
+    '<div class="frow2">' +
+    '<div class="fld"><span class="flbl">Expiry (MM/YY)</span>' +
+    '<input class="finp" type="text" id="cardExp" placeholder="MM / YY" maxlength="7" oninput="fmtExp(this)" autocomplete="cc-exp"></div>' +
+    '<div class="fld"><span class="flbl">CVV</span>' +
+    '<input class="finp" type="password" id="cardCvv" placeholder="&#x2022;&#x2022;&#x2022;" maxlength="4" autocomplete="cc-csc"></div></div>' +
+    '<div class="err-box" id="cardErr"></div>' +
+    '<button class="pay-btn" id="payCardBtn" onclick="payCard()" style="background:' + pc + '">Pay ' + p + '</button></div>';
+  if (m === 'UPI') return '<div class="fb">' +
+    '<div class="fld"><span class="flbl">UPI ID / VPA</span>' +
+    '<input class="finp" type="text" id="upiVpa" placeholder="name@okhdfc">' +
+    '<span class="fhint">Enter your UPI ID linked to any bank</span></div>' +
+    '<div class="upi-logos"><span style="font-size:11px;color:#aaa">Pay via:</span>' +
+    '<span class="upi-logo">GPay</span><span class="upi-logo">PhonePe</span>' +
+    '<span class="upi-logo">Paytm</span><span class="upi-logo">BHIM</span></div>' +
+    '<div class="err-box" id="upiErr"></div>' +
+    '<button class="pay-btn" id="payUpiBtn" onclick="payUpi()" style="background:' + pc + '">Pay ' + p + '</button></div>';
+  if (m === 'NetBanking') return '<div class="fb">' +
+    '<div class="fld"><span class="flbl">Select Your Bank</span>' +
+    '<select class="fsel" id="bankCode"><option value="">-- Select Bank --</option>' +
+    '<option value="HDFCBANK">HDFC Bank</option><option value="SBIN">State Bank of India</option>' +
+    '<option value="ICICIBANK">ICICI Bank</option><option value="AXISBANK">Axis Bank</option>' +
+    '<option value="KOTAKBANK">Kotak Mahindra Bank</option><option value="INDUSIND">IndusInd Bank</option>' +
+    '<option value="YESBANK">Yes Bank</option><option value="PNBRETAIL">Punjab National Bank</option>' +
+    '<option value="BOBIRETAIL">Bank of Baroda</option><option value="UNIONBANK">Union Bank of India</option>' +
+    '</select></div>' +
+    '<div class="err-box" id="nbErr"></div>' +
+    '<button class="pay-btn" id="payNbBtn" onclick="payNb()" style="background:' + pc + '">Pay ' + p + '</button></div>';
+  if (m === 'Wallet') return '<div class="fb">' +
+    '<div class="fld"><span class="flbl">Select Wallet</span>' +
+    '<div class="wallet-grid">' +
+    '<div class="w-item" onclick="payWallet(this,\'Paytm\')">Paytm</div>' +
+    '<div class="w-item" onclick="payWallet(this,\'PhonePe\')">PhonePe</div>' +
+    '<div class="w-item" onclick="payWallet(this,\'MobiKwik\')">MobiKwik</div>' +
+    '<div class="w-item" onclick="payWallet(this,\'Airtel\')">Airtel</div>' +
+    '<div class="w-item" onclick="payWallet(this,\'Ola\')">Ola Money</div>' +
+    '<div class="w-item" onclick="payWallet(this,\'Amazon\')">Amazon Pay</div>' +
+    '</div></div>' +
+    '<div class="err-box" id="walletErr"></div></div>';
+  if (m === 'EMI') return '<div class="fb">' +
+    '<div class="fld"><span class="flbl">Card Number</span>' +
+    '<div class="cin-wrap"><input class="finp" type="text" id="emiCard" placeholder="0000 0000 0000 0000" maxlength="19" oninput="fmtCard(this)">' +
+    '<span class="cbrand">💳</span></div></div>' +
+    '<div class="fld"><span class="flbl">Select Tenure</span>' +
+    '<div class="emi-grid">' +
+    '<div class="emi-item sel" onclick="selEmiF(this,3)">3 Mo</div>' +
+    '<div class="emi-item" onclick="selEmiF(this,6)">6 Mo</div>' +
+    '<div class="emi-item" onclick="selEmiF(this,9)">9 Mo</div>' +
+    '<div class="emi-item" onclick="selEmiF(this,12)">12 Mo</div>' +
+    '</div></div>' +
+    '<div class="err-box" id="emiErr"></div>' +
+    '<button class="pay-btn" id="payEmiBtn" onclick="payEmi()" style="background:' + pc + '">Pay ' + p + ' via EMI</button></div>';
+  if (m === 'PayLater') return '<div class="fb">' +
+    '<div class="pl-box"><div class="pl-ico">&#x23F0;</div>' +
+    '<p>Pay now &amp; settle within 30 days with zero interest.</p>' +
+    '<p class="pl-prov">Available via <strong>Simpl</strong>, <strong>LazyPay</strong>, <strong>ZestMoney</strong></p></div>' +
+    '<div class="err-box" id="plErr"></div>' +
+    '<button class="pay-btn" id="payPlBtn" onclick="payPL()" style="background:' + pc + '">Pay ' + p + ' via Pay Later</button></div>';
+  return '<div class="fb"><button class="pay-btn" onclick="payGen(\'' + m + '\')" style="background:' + pc + '">Pay ' + p + '</button></div>';
 }
-function togMode(m){
-  if(activeMd===m){
-    document.getElementById('form-'+m).style.display='none';
-    document.getElementById('chev-'+m).style.transform='';
-    document.getElementById('row-'+m).classList.remove('active');
-    activeMd=null;return;
+
+function togDtl() {
+  var d = document.getElementById('ordDtl'), c = document.getElementById('amtChev');
+  var show = d.style.display !== 'block';
+  d.style.display = show ? 'block' : 'none';
+  if (c) c.style.transform = show ? 'rotate(180deg)' : '';
+}
+
+function togMode(m) {
+  var row = document.getElementById('row-' + m);
+  if (!row) return;
+  var isOpen = row.classList.contains('open');
+  if (activeMd) { var prev = document.getElementById('row-' + activeMd); if (prev) prev.classList.remove('open'); }
+  activeMd = isOpen ? null : m;
+  row.classList.toggle('open', !isOpen);
+}
+
+function handleBack() {
+  if (window.parent !== window) { window.parent.postMessage({ source: 'BankUPG', event: 'payment.dismiss' }, '*'); }
+  else { history.back(); }
+}
+
+function setLoading(id, on, rst) {
+  var b = document.getElementById(id); if (!b) return;
+  b.disabled = on;
+  if (on) b.innerHTML = '<span class="spin"></span> Processing...';
+  else if (rst) b.innerHTML = rst;
+}
+
+function showErr(id, msg) { var e = document.getElementById(id); if (e) { e.textContent = msg; e.classList.add('show'); } }
+function hideErr(id) { var e = document.getElementById(id); if (e) e.classList.remove('show'); }
+
+async function doPay(payload, btnId, errId, rst) {
+  hideErr(errId); setLoading(btnId, true, null);
+  try {
+    var r = await fetch('/api/checkout/pay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    var j = await r.json(), d = j.data;
+    if (j.success && d && d.success) { showResult(true, d.paymentId, d.paymentMode, null, d.redirectUrl, d.signature); }
+    else { showErr(errId, (d && d.message) || j.message || 'Payment failed. Please try again.'); setLoading(btnId, false, rst); }
+  } catch(e) { showErr(errId, 'Network error. Please try again.'); setLoading(btnId, false, rst); }
+}
+
+function payCard() {
+  var num = document.getElementById('cardNum').value.replace(/\s/g,'');
+  var nm = document.getElementById('cardName').value.trim();
+  var exp = document.getElementById('cardExp').value.trim();
+  var cvv = document.getElementById('cardCvv').value.trim();
+  if (num.length < 15) return showErr('cardErr', 'Please enter a valid card number.');
+  if (!nm) return showErr('cardErr', 'Please enter the name on card.');
+  if (!/^\d{2}\s*\/\s*\d{2}$/.test(exp)) return showErr('cardErr', 'Please enter expiry as MM/YY.');
+  if (cvv.length < 3) return showErr('cardErr', 'Please enter a valid CVV.');
+  var p = (cfg.amountSymbol || '') + cfg.amount;
+  doPay({ checkoutToken: cfg.token, paymentMode: 'Card', cardNumber: num, cardName: nm, cardExpiry: exp, cardCvv: cvv }, 'payCardBtn', 'cardErr', 'Pay ' + p);
+}
+function payUpi() {
+  var vpa = document.getElementById('upiVpa').value.trim();
+  if (!vpa.includes('@')) return showErr('upiErr', 'Please enter a valid UPI ID (e.g. name@okhdfc).');
+  var p = (cfg.amountSymbol || '') + cfg.amount;
+  doPay({ checkoutToken: cfg.token, paymentMode: 'UPI', upiVpa: vpa }, 'payUpiBtn', 'upiErr', 'Pay ' + p);
+}
+function payNb() {
+  var bk = document.getElementById('bankCode').value;
+  if (!bk) return showErr('nbErr', 'Please select your bank.');
+  var p = (cfg.amountSymbol || '') + cfg.amount;
+  doPay({ checkoutToken: cfg.token, paymentMode: 'NetBanking', bankCode: bk }, 'payNbBtn', 'nbErr', 'Pay ' + p);
+}
+function payWallet(el, nm) {
+  document.querySelectorAll('.w-item').forEach(function(w) { w.classList.remove('sel'); });
+  el.classList.add('sel');
+  doPay({ checkoutToken: cfg.token, paymentMode: 'Wallet', bankCode: nm }, null, 'walletErr', '');
+}
+function selEmiF(el, m) { document.querySelectorAll('.emi-item').forEach(function(e) { e.classList.remove('sel'); }); el.classList.add('sel'); selEmiMonths = m; }
+function payEmi() {
+  var num = document.getElementById('emiCard').value.replace(/\s/g,'');
+  if (num.length < 15) return showErr('emiErr', 'Please enter a valid card number.');
+  var p = (cfg.amountSymbol || '') + cfg.amount + ' via EMI';
+  doPay({ checkoutToken: cfg.token, paymentMode: 'EMI', cardNumber: num, emiTenure: selEmiMonths }, 'payEmiBtn', 'emiErr', 'Pay ' + p);
+}
+function payPL() {
+  var p = (cfg.amountSymbol || '') + cfg.amount + ' via Pay Later';
+  doPay({ checkoutToken: cfg.token, paymentMode: 'PayLater' }, 'payPlBtn', 'plErr', 'Pay ' + p);
+}
+function payGen(m) { doPay({ checkoutToken: cfg.token, paymentMode: m }, null, 'genErr', ''); }
+
+function fmtCard(el) {
+  var v = el.value.replace(/\D/g,'').substring(0,16);
+  el.value = v.match(/.{1,4}/g) ? v.match(/.{1,4}/g).join(' ') : v;
+  var b = document.getElementById('cbrand');
+  if (b) {
+    if (v.startsWith('4')) b.textContent = 'Visa';
+    else if (v.startsWith('5')) b.textContent = 'MC';
+    else if (v.startsWith('34') || v.startsWith('37')) b.textContent = 'Amex';
+    else if (v.startsWith('6')) b.textContent = 'RuPay';
+    else b.textContent = '💳';
   }
-  if(activeMd){
-    document.getElementById('form-'+activeMd).style.display='none';
-    document.getElementById('chev-'+activeMd).style.transform='';
-    document.getElementById('row-'+activeMd).classList.remove('active');
-  }
-  activeMd=m;
-  document.getElementById('form-'+m).style.display='block';
-  document.getElementById('chev-'+m).style.transform='rotate(90deg)';
-  document.getElementById('row-'+m).classList.add('active');
 }
-function handleBack(){
-  if(window.parent!==window){window.parent.postMessage({source:'BankUPG',event:'payment.dismiss'},'*');}else{history.back();}
-}
-function ld(id,on,rst){
-  var b=document.getElementById(id);if(!b)return;
-  b.disabled=on;
-  if(on)b.innerHTML='<span class="spin"></span> Processing...';
-  else if(rst)b.innerHTML=rst;
-}
-function se(id,msg){var e=document.getElementById(id);if(e){e.style.display='block';e.textContent=msg;}}
-function he(id){var e=document.getElementById(id);if(e)e.style.display='none';}
-async function doPay(payload,btnId,errId,rst){
-  he(errId);ld(btnId,true,null);
-  try{
-    var r=await fetch('/api/checkout/pay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    var j=await r.json(),d=j.data;
-    if(j.success&&d&&d.success){showResult(true,d.paymentId,d.paymentMode,null,d.redirectUrl,d.signature);}
-    else{se(errId,(d&&d.message)||j.message||'Payment failed.');ld(btnId,false,rst);}
-  }catch(e){se(errId,'Network error. Please try again.');ld(btnId,false,rst);}
-}
-function payCard(){
-  var num=document.getElementById('cardNum').value.replace(/\s/g,'');
-  var nm=document.getElementById('cardName').value.trim();
-  var exp=document.getElementById('cardExp').value.trim();
-  var cvv=document.getElementById('cardCvv').value.trim();
-  if(num.length<15)return se('cardErr','Please enter a valid card number.');
-  if(!nm)return se('cardErr','Please enter the name on card.');
-  if(!/^\d{2}\s*\/\s*\d{2}$/.test(exp))return se('cardErr','Please enter a valid expiry date (MM/YY).');
-  if(cvv.length<3)return se('cardErr','Please enter a valid CVV.');
-  doPay({checkoutToken:cfg.token,paymentMode:'Card',cardNumber:num,cardName:nm,cardExpiry:exp,cardCvv:cvv},'payCardBtn','cardErr','Pay '+cfg.amountSymbol+cfg.amount);
-}
-function payUpi(){
-  var vpa=document.getElementById('upiVpa').value.trim();
-  if(!vpa.includes('@'))return se('upiErr','Please enter a valid UPI ID (e.g. name@okhdfc).');
-  doPay({checkoutToken:cfg.token,paymentMode:'UPI',upiVpa:vpa},'payUpiBtn','upiErr','Pay '+cfg.amountSymbol+cfg.amount);
-}
-function payNb(){
-  var bk=document.getElementById('bankCode').value;
-  if(!bk)return se('nbErr','Please select your bank.');
-  doPay({checkoutToken:cfg.token,paymentMode:'NetBanking',bankCode:bk},'payNbBtn','nbErr','Pay '+cfg.amountSymbol+cfg.amount);
-}
-function payWallet(el,nm){
-  document.querySelectorAll('.w-item').forEach(function(w){w.style.borderColor='transparent';w.style.color='';});
-  el.style.borderColor=cfg.primaryColor;el.style.color=cfg.primaryColor;
-  doPay({checkoutToken:cfg.token,paymentMode:'Wallet',bankCode:nm},null,'walletErr','');
-}
-function selEmiF(el,m){document.querySelectorAll('.emi-item').forEach(function(e){e.classList.remove('sel');});el.classList.add('sel');selEmi=m;}
-function payEmi(){
-  var num=document.getElementById('emiCard').value.replace(/\s/g,'');
-  if(num.length<15)return se('emiErr','Please enter a valid card number.');
-  doPay({checkoutToken:cfg.token,paymentMode:'EMI',cardNumber:num},'payEmiBtn','emiErr','Pay '+cfg.amountSymbol+cfg.amount+' via EMI');
-}
-function payPL(){
-  doPay({checkoutToken:cfg.token,paymentMode:'PayLater'},'payPlBtn','plErr','Pay '+cfg.amountSymbol+cfg.amount+' via Pay Later');
-}
-function payGen(m){
-  doPay({checkoutToken:cfg.token,paymentMode:m},null,'genErr','');
-}
-function fmtCard(el){
-  var v=el.value.replace(/\D/g,'').substring(0,16);
-  el.value=v.match(/.{1,4}/g)?v.match(/.{1,4}/g).join(' '):v;
-  var b=document.getElementById('cbrand');
-  if(b){b.textContent=v.startsWith('4')?'&#x1F4B3; Visa':v.startsWith('5')?'&#x1F4B3; MC':v.startsWith('6')?'&#x1F4B3; RuPay':'&#x1F4B3;';}
-}
-function fmtCardG(el){var v=el.value.replace(/\D/g,'').substring(0,16);el.value=v.match(/.{1,4}/g)?v.match(/.{1,4}/g).join(' '):v;}
-function fmtExp(el){var v=el.value.replace(/\D/g,'');if(v.length>=2)v=v.substring(0,2)+' / '+v.substring(2,4);el.value=v;}
-function showResult(ok,pid,mode,msg,rdUrl,sig){
-  document.getElementById('optList').style.display='none';
-  document.querySelector('.opt-label').style.display='none';
-  document.getElementById('resultOv').style.display='flex';
-  document.getElementById('rIco').className='r-ico '+(ok?'ok':'fail');
-  document.getElementById('rIco').textContent=ok?'\u2713':'\u2715';
-  document.getElementById('rTtl').textContent=ok?'Payment Successful!':'Payment Failed';
-  document.getElementById('rAmt').innerHTML=ok?'<span style="color:'+cfg.primaryColor+'">'+cfg.amountSymbol+cfg.amount+'</span>':'';
-  document.getElementById('rSub').textContent=ok?('via '+mode):(msg||'Please try another method.');
-  document.getElementById('rAmt').style.color=cfg.primaryColor;
-  var ri=document.getElementById('retryBtn');
-  ri.style.borderColor=cfg.primaryColor;ri.style.color=cfg.primaryColor;
-  if(ok&&pid){document.getElementById('rId').style.display='block';document.getElementById('rId').textContent='Payment ID: '+pid;}
-  ri.style.display=ok?'none':'inline-block';
-  if(ok){
-    if(window.parent!==window){window.parent.postMessage({source:'BankUPG',event:'payment.success',payment_id:pid,order_id:cfg.orderId,signature:sig,amount:cfg.amount,payment_mode:mode,paid_at:new Date().toISOString()},'*');}
-    setTimeout(function(){if(rdUrl)window.top.location.href=rdUrl;},2500);
+function fmtExp(el) { var v = el.value.replace(/\D/g,''); if (v.length >= 2) v = v.substring(0,2) + ' / ' + v.substring(2,4); el.value = v; }
+
+function showResult(ok, pid, mode, msg, rdUrl, sig) {
+  var ol = document.getElementById('optList'), lbl = document.querySelector('.opt-label'), ov = document.getElementById('resOv');
+  if (ol) ol.style.display = 'none';
+  if (lbl) lbl.style.display = 'none';
+  if (ov) ov.style.display = 'flex';
+  var pc = (cfg && cfg.primaryColor) ? cfg.primaryColor : '#009688';
+  var ico = document.getElementById('resIco'), ttl = document.getElementById('resTtl');
+  var amt = document.getElementById('resAmt'), sub = document.getElementById('resSub');
+  var idEl = document.getElementById('resId'), retryBtn = document.getElementById('retryBtn');
+  if (ico) { ico.className = 'res-ico ' + (ok ? 'ok' : 'fail'); ico.textContent = ok ? '\u2713' : '\u2715'; }
+  if (ttl) ttl.textContent = ok ? 'Payment Successful!' : 'Payment Failed';
+  if (amt) { amt.textContent = ok ? ((cfg.amountSymbol || '') + cfg.amount) : ''; amt.style.color = pc; }
+  if (sub) sub.textContent = ok ? ('via ' + mode) : (msg || 'Please try another method.');
+  if (idEl) { idEl.style.display = (ok && pid) ? 'block' : 'none'; if (ok && pid) idEl.textContent = 'Payment ID: ' + pid; }
+  if (retryBtn) retryBtn.style.display = ok ? 'none' : 'inline-block';
+  if (ok) {
+    if (window.parent !== window) { window.parent.postMessage({ source: 'BankUPG', event: 'payment.success', payment_id: pid, order_id: cfg.orderId, signature: sig, amount: cfg.amount, payment_mode: mode, paid_at: new Date().toISOString() }, '*'); }
+    setTimeout(function() { if (rdUrl) window.top.location.href = rdUrl; }, 2500);
   }
 }
-init();
+
+window.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
