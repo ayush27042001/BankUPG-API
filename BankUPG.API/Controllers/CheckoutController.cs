@@ -305,7 +305,7 @@ namespace BankUPG.API.Controllers
 </div>
 <!-- Config injected by server — parsed by checkout-page.js, never executed -->
 <script type='application/json' id='cfg-data'>__CHECKOUT_CONFIG__</script>
-<script src='/checkout-page.js?v=3'></script>
+<script src='/checkout-page.js?v=4'></script>
 <!-- all JS served from /checkout-page.js -->
 <!-- REMOVEME_START
 function init() {

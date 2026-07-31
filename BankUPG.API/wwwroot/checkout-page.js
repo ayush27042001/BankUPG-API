@@ -17,7 +17,9 @@ var cfg = null, activeMd = null, selEmiMonths = 3;
   } catch (e) { cfg = null; }
 })();
 
-var DEFAULT_LOGO = 'https://paymentgateway.banku.co.in/assets/images/bankulogo.png';
+/* Served from /images/bankulogo.png (same origin as the checkout page).
+   Same-origin avoids any cross-domain CSP or CORS concern. */
+var DEFAULT_LOGO = '/images/bankulogo.png';
 
 /* ── SVG icons for payment methods ── */
 var ICONS = {
