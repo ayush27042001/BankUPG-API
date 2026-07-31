@@ -1,4 +1,5 @@
 using BankUPG.Application.Interfaces.Checkout;
+using BankUPG.Application.Interfaces.IpWhitelist;
 using BankUPG.Infrastructure.Data;
 using BankUPG.Infrastructure.Entities;
 using BankUPG.SharedKernal.Requests;
@@ -14,6 +15,7 @@ namespace BankUPG.Application.Services.Checkout
     {
         private readonly AppDBContext _context;
         private readonly ILogger<CheckoutService> _logger;
+        private readonly IIpWhitelistService _ipWhitelist;
 
         private static readonly HashSet<string> FailCardNumbers = new()
         {
@@ -22,17 +24,21 @@ namespace BankUPG.Application.Services.Checkout
             "4000000000009987"
         };
 
-        public CheckoutService(AppDBContext context, ILogger<CheckoutService> logger)
+        public CheckoutService(AppDBContext context, ILogger<CheckoutService> logger, IIpWhitelistService ipWhitelist)
         {
             _context = context;
             _logger = logger;
+            _ipWhitelist = ipWhitelist;
         }
 
-        public async Task<CheckoutOrderResponse> InitiateOrderAsync(string apiKey, CheckoutInitiateRequest request, string baseUrl)
+        public async Task<CheckoutOrderResponse> InitiateOrderAsync(string apiKey, CheckoutInitiateRequest request, string baseUrl, string callerIp)
         {
             var apiKeyRecord = await _context.MerchantApiKeys.AsNoTracking()
                 .FirstOrDefaultAsync(k => k.ApiKey == apiKey)
                 ?? throw new UnauthorizedAccessException("Invalid API key.");
+
+            if (!await _ipWhitelist.IsIpAllowedAsync(apiKeyRecord.Mid, callerIp))
+                throw new UnauthorizedAccessException($"IP address '{callerIp}' is not whitelisted for this merchant.");
 
             var merchant = await _context.Merchants.AsNoTracking()
                 .FirstOrDefaultAsync(m => m.Mid == apiKeyRecord.Mid)
@@ -238,11 +244,14 @@ namespace BankUPG.Application.Services.Checkout
             }
         }
 
-        public async Task<CheckoutVerifyResponse> VerifyPaymentAsync(string apiKey, CheckoutVerifyRequest request)
+        public async Task<CheckoutVerifyResponse> VerifyPaymentAsync(string apiKey, CheckoutVerifyRequest request, string callerIp)
         {
             var apiKeyRecord = await _context.MerchantApiKeys.AsNoTracking()
                 .FirstOrDefaultAsync(k => k.ApiKey == apiKey)
                 ?? throw new UnauthorizedAccessException("Invalid API key.");
+
+            if (!await _ipWhitelist.IsIpAllowedAsync(apiKeyRecord.Mid, callerIp))
+                throw new UnauthorizedAccessException($"IP address '{callerIp}' is not whitelisted for this merchant.");
 
             var expectedSignature = GenerateSignature(request.BankupgPaymentId, request.BankupgOrderId, apiKeyRecord.ApiSalt ?? apiKey);
             var isValid = string.Equals(expectedSignature, request.BankupgSignature, StringComparison.OrdinalIgnoreCase);
@@ -272,11 +281,14 @@ namespace BankUPG.Application.Services.Checkout
             };
         }
 
-        public async Task<CheckoutStatusResponse?> GetOrderStatusAsync(string apiKey, string orderId)
+        public async Task<CheckoutStatusResponse?> GetOrderStatusAsync(string apiKey, string orderId, string callerIp)
         {
             var apiKeyRecord = await _context.MerchantApiKeys.AsNoTracking()
                 .FirstOrDefaultAsync(k => k.ApiKey == apiKey)
                 ?? throw new UnauthorizedAccessException("Invalid API key.");
+
+            if (!await _ipWhitelist.IsIpAllowedAsync(apiKeyRecord.Mid, callerIp))
+                throw new UnauthorizedAccessException($"IP address '{callerIp}' is not whitelisted for this merchant.");
 
             if (!long.TryParse(orderId.Replace("order_", ""), out var id)) return null;
 

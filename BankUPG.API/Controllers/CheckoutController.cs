@@ -24,6 +24,14 @@ namespace BankUPG.API.Controllers
 
         private string? GetApiKey() => Request.Headers.TryGetValue("X-Api-Key", out var v) ? v.ToString() : null;
 
+        private string GetCallerIp()
+        {
+            var ip = HttpContext.Connection.RemoteIpAddress;
+            if (ip == null) return string.Empty;
+            if (ip.IsIPv4MappedToIPv6) ip = ip.MapToIPv4();
+            return ip.ToString();
+        }
+
         // ─────────────────────────────────────────────────────────────────────────
         // MERCHANT SERVER-SIDE APIs (protected by X-Api-Key header)
         // ─────────────────────────────────────────────────────────────────────────
@@ -50,7 +58,7 @@ namespace BankUPG.API.Controllers
 
             try
             {
-                var result = await _service.InitiateOrderAsync(apiKey, request, GetBaseUrl());
+                var result = await _service.InitiateOrderAsync(apiKey, request, GetBaseUrl(), GetCallerIp());
                 return Ok(new ApiResponse<CheckoutOrderResponse> { Success = true, Message = "Order created.", Data = result });
             }
             catch (UnauthorizedAccessException ex)
@@ -78,7 +86,7 @@ namespace BankUPG.API.Controllers
 
             try
             {
-                var result = await _service.VerifyPaymentAsync(apiKey, request);
+                var result = await _service.VerifyPaymentAsync(apiKey, request, GetCallerIp());
                 return Ok(new ApiResponse<CheckoutVerifyResponse>
                 {
                     Success = result.IsValid,
@@ -110,7 +118,7 @@ namespace BankUPG.API.Controllers
 
             try
             {
-                var result = await _service.GetOrderStatusAsync(apiKey, orderId);
+                var result = await _service.GetOrderStatusAsync(apiKey, orderId, GetCallerIp());
                 if (result == null)
                     return NotFound(new ApiResponse { Success = false, Message = "Order not found." });
 
