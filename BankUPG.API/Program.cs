@@ -115,6 +115,8 @@ using BankUPG.Application.Interfaces.MerchantColumnPreference;
 using BankUPG.Application.Services.MerchantColumnPreference;
 using BankUPG.Application.Interfaces.IpWhitelist;
 using BankUPG.Application.Services.IpWhitelist;
+using BankUPG.Application.Interfaces.Checkout;
+using BankUPG.Application.Services.Checkout;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -194,6 +196,7 @@ builder.Services.AddScoped<ICheckoutCustomizationService, CheckoutCustomizationS
 builder.Services.AddScoped<IWebhookService, WebhookService>();
 builder.Services.AddScoped<IMerchantPaymentMethodService, MerchantPaymentMethodService>();
 builder.Services.AddScoped<IMerchantColumnPreferenceService, MerchantColumnPreferenceService>();
+builder.Services.AddScoped<ICheckoutService, CheckoutService>();
 builder.Services.AddScoped<IIpWhitelistService, IpWhitelistService>();
 
 // Add HttpClientFactory for external API calls
@@ -348,6 +351,8 @@ var app = builder.Build();
 
 // Configure HTTP request pipeline
 // Enable Swagger in all environments (with authentication in production)
+app.UseStaticFiles();
+
 app.UseSwagger(c =>
 {
     c.RouteTemplate = "swagger/{documentName}/swagger.json";
@@ -364,7 +369,8 @@ app.UseSwaggerUI(c =>
 app.Use(async (context, next) =>
 {
     context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
-    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    if (!context.Request.Path.StartsWithSegments("/checkout"))
+        context.Response.Headers.Append("X-Frame-Options", "SAMEORIGIN");
     context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
     context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
     context.Response.Headers.Append("Content-Security-Policy", "default-src 'self'");

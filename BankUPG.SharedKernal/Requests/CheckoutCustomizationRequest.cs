@@ -29,4 +29,23 @@ namespace BankUPG.SharedKernal.Requests
         [Required]
         public int CheckoutCustomizationId { get; set; }
     }
+
+    /// <summary>Merchant self-service request — Mid is resolved from JWT, no file upload here.</summary>
+    public class MerchantCheckoutCustomizationRequest
+    {
+        [MaxLength(1000)]
+        public string? BrandLogoUrl { get; set; }
+
+        [MaxLength(10)]
+        public string? PrimaryColor { get; set; }
+
+        [MaxLength(10)]
+        public string? SecondaryColor { get; set; }
+
+        [MaxLength(10)]
+        public string? Language { get; set; }
+
+        [MaxLength(1000)]
+        public string? OwnerSignatureUrl { get; set; }
+    }
 }

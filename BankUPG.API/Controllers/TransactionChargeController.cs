@@ -1,3 +1,4 @@
+using BankUPG.Application.Interfaces.Transaction;
 using BankUPG.Application.Interfaces.TransactionCharge;
 using BankUPG.SharedKernal.Requests;
 using BankUPG.SharedKernal.Responses;
@@ -14,15 +15,36 @@ namespace BankUPG.API.Controllers
     public class TransactionChargeController : ControllerBase
     {
         private readonly ITransactionChargeService _service;
+        private readonly ITransactionService _transactionService;
         private readonly ILogger<TransactionChargeController> _logger;
 
-        public TransactionChargeController(ITransactionChargeService service, ILogger<TransactionChargeController> logger)
+        public TransactionChargeController(
+            ITransactionChargeService service,
+            ITransactionService transactionService,
+            ILogger<TransactionChargeController> logger)
         {
             _service = service;
+            _transactionService = transactionService;
             _logger = logger;
         }
 
         private bool IsSuperAdmin() => User.HasClaim(ClaimTypes.Role, "SuperAdmin");
+
+        private int? GetUserId() =>
+            int.TryParse(User.FindAll(ClaimTypes.NameIdentifier)
+                .FirstOrDefault(c => int.TryParse(c.Value, out _))?.Value, out var id) ? id : null;
+
+        /// <summary>Merchant: get MDR charges for own transaction.</summary>
+        [HttpGet("by-transaction/{transactionId:long}")]
+        [ProducesResponseType(typeof(ApiResponse<List<TransactionChargeDetailResponse>>), 200)]
+        public async Task<ActionResult<ApiResponse<List<TransactionChargeDetailResponse>>>> GetByTransaction(long transactionId)
+        {
+            var userId = GetUserId();
+            if (userId == null) return Unauthorized(new ApiResponse { Success = false, Message = "Invalid token" });
+
+            var result = await _transactionService.GetChargesAsync(userId.Value, transactionId);
+            return Ok(new ApiResponse<List<TransactionChargeDetailResponse>> { Success = true, Message = "Transaction charges retrieved", Data = result });
+        }
 
         [HttpPost]
         public async Task<ActionResult<ApiResponse<TransactionChargeResponse>>> Create([FromBody] CreateTransactionChargeRequest request)

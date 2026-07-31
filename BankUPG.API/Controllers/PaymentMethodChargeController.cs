@@ -44,9 +44,12 @@ namespace BankUPG.API.Controllers
         }
 
         [HttpPut("{paymentMethodChargeId:int}")]
-        public async Task<ActionResult<ApiResponse<PaymentMethodChargeResponse>>> Update(int paymentMethodChargeId, [FromBody] CreatePaymentMethodChargeRequest request)
+        public async Task<ActionResult<ApiResponse<PaymentMethodChargeResponse>>> Update(int paymentMethodChargeId, [FromBody] UpdatePaymentMethodChargeRequest request)
         {
             if (!IsSuperAdmin()) return Forbid();
+            if (paymentMethodChargeId != request.PaymentMethodChargeId)
+                return BadRequest(new ApiResponse { Success = false, Message = "ID mismatch" });
+
             var result = await _service.UpdateAsync(paymentMethodChargeId, request);
             if (result == null) return NotFound(new ApiResponse { Success = false, Message = "Payment method charge not found" });
             return Ok(new ApiResponse<PaymentMethodChargeResponse> { Success = true, Message = "Payment method charge updated", Data = result });

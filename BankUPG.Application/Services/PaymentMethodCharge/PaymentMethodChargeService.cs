@@ -41,7 +41,7 @@ namespace BankUPG.Application.Services.PaymentMethodCharge
             return MapToResponse(entity);
         }
 
-        public async Task<PaymentMethodChargeResponse?> UpdateAsync(int paymentMethodChargeId, CreatePaymentMethodChargeRequest request)
+        public async Task<PaymentMethodChargeResponse?> UpdateAsync(int paymentMethodChargeId, UpdatePaymentMethodChargeRequest request)
         {
             var entity = await _context.PaymentMethodCharges.FindAsync(paymentMethodChargeId);
             if (entity == null) return null;
