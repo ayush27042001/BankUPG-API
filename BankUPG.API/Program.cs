@@ -373,7 +373,20 @@ app.Use(async (context, next) =>
         context.Response.Headers.Append("X-Frame-Options", "SAMEORIGIN");
     context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
     context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
-    context.Response.Headers.Append("Content-Security-Policy", "default-src 'self'");
+
+    // Checkout hosted pages use external CSS/JS from same origin; merchant logos may
+    // come from any URL; the inline config <script> block requires 'unsafe-inline'.
+    if (context.Request.Path.StartsWithSegments("/checkout"))
+        context.Response.Headers.Append("Content-Security-Policy",
+            "default-src 'self'; " +
+            "style-src 'self'; " +
+            "script-src 'self' 'unsafe-inline'; " +
+            "img-src * data: blob:; " +
+            "connect-src 'self'; " +
+            "frame-ancestors *");
+    else
+        context.Response.Headers.Append("Content-Security-Policy", "default-src 'self'");
+
     await next();
 });
 

@@ -1,39 +1,33 @@
 /**
- * BankUPG Web Checkout SDK v1.0
- * Usage:
- *   <script src="https://your-api-domain.com/checkout.js"></script>
- *   var handler = BankUPG.open({
- *       key:          "your_api_key",        // from Merchant Dashboard
- *       order_id:     "order_12345",          // from POST /api/checkout/orders
- *       checkout_url: "https://your-api-domain.com/checkout/TOKEN",
- *       amount:       50000,                  // in paise (50000 = ₹500.00)
- *       currency:     "INR",
- *       name:         "Acme Corp",
- *       description:  "Order #12345",
- *       image:        "https://example.com/logo.png",
- *       prefill: {
- *           name:    "Ramesh Kumar",
- *           email:   "ramesh@example.com",
- *           contact: "9876543210"
- *       },
- *       theme: { color: "#1a73e8" },
- *       handler: function(response) {
- *           // Called on successful payment
- *           console.log(response.bankupg_payment_id);
- *           console.log(response.bankupg_order_id);
- *           console.log(response.bankupg_signature);
- *           // POST these to your server for verification
- *       },
- *       modal: {
- *           ondismiss: function() { console.log("Modal dismissed"); }
- *       }
- *   });
+ * BankUPG Web Checkout SDK v1.1
+ *
+ * Integration (3 lines for the merchant):
+ *   1.  Include this script on your checkout page:
+ *       <script src="https://apipg.banku.co.in/checkout.js"></script>
+ *
+ *   2.  Create an order on YOUR server (never expose X-Api-Key on the client):
+ *       POST /api/checkout/orders  →  response.data.checkoutUrl
+ *
+ *   3.  Open the checkout modal:
+ *       BankUPG.open({
+ *           key:          "your_api_key",
+ *           checkout_url: res.data.checkoutUrl,   // from step 2
+ *           handler: function(response) {
+ *               // Called on successful payment — send to your server to verify
+ *               console.log(response.payment_id);   // pay_XXXX
+ *               console.log(response.order_id);     // order_XXXX
+ *               console.log(response.signature);    // HMAC signature
+ *           },
+ *           modal: {
+ *               ondismiss: function() { console.log("Checkout closed"); }
+ *           }
+ *       });
  */
 
 (function (global) {
     'use strict';
 
-    var SDK_VERSION = '1.0.0';
+    var SDK_VERSION = '1.1.0';
     var BRAND_NAME = 'BankUPG';
 
     // ─── Utility ──────────────────────────────────────────────────────────────
@@ -95,17 +89,17 @@
 
             if (data.event === 'payment.success') {
                 window.removeEventListener('message', onMessage);
+                BankUPG._closeModal();
                 if (typeof handler === 'function') {
                     handler({
-                        bankupg_payment_id: data.payment_id,
-                        bankupg_order_id: data.order_id,
-                        bankupg_signature: data.signature,
-                        amount: data.amount,
+                        payment_id:   data.payment_id,
+                        order_id:     data.order_id,
+                        signature:    data.signature,
+                        amount:       data.amount,
                         payment_mode: data.payment_mode,
-                        paid_at: data.paid_at
+                        paid_at:      data.paid_at
                     });
                 }
-                BankUPG._closeModal();
             }
 
             if (data.event === 'payment.dismiss') {
@@ -186,9 +180,9 @@
          */
         validateResponse: function (response) {
             return !!(response &&
-                response.bankupg_payment_id &&
-                response.bankupg_order_id &&
-                response.bankupg_signature);
+                response.payment_id &&
+                response.order_id &&
+                response.signature);
         },
 
         version: SDK_VERSION
