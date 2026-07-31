@@ -5,7 +5,7 @@
 > **Frontend URL:** `https://paymentgateway.banku.co.in`  
 > **Hosted Checkout:** `https://apipg.banku.co.in/checkout/{token}`  
 > **JS SDK:** `https://apipg.banku.co.in/checkout.js`  
-> **Version:** 1.0 | July 2026
+> **Version:** 1.1 | August 2026
 
 ---
 
@@ -84,7 +84,7 @@ Create `src/app/models/checkout.models.ts`:
 // ──────────────────────────────────────────────
 
 export interface CreateOrderRequest {
-  amount: number;          // in paise — ₹499 = 49900
+  amount: number;          // in rupees — ₹499.00 = 499
   currency?: string;       // default 'INR'
   orderRef: string;        // your unique order ID
   customerName?: string;
@@ -203,36 +203,17 @@ export interface TransactionChargeDetail {
 // JS SDK TYPES
 // ──────────────────────────────────────────────
 
+// Received via window.postMessage from the hosted checkout page
+// when embedded as an iframe, OR via redirect callback URL query params
 export interface BankUPGHandlerResponse {
-  bankupg_payment_id: string;
-  bankupg_order_id: string;
-  bankupg_signature: string;
-  amount: number;
-  payment_mode: string;
-  paid_at: string;
-}
-
-declare global {
-  interface Window {
-    BankUPG: {
-      open: (options: BankUPGOptions) => void;
-    };
-  }
-}
-
-export interface BankUPGOptions {
-  key: string;
-  order_id: string;
-  checkout_url: string;
-  amount: number;
-  currency?: string;
-  name?: string;
-  description?: string;
-  image?: string;
-  prefill?: { name?: string; email?: string; contact?: string };
-  theme?: { color?: string };
-  handler: (response: BankUPGHandlerResponse) => void;
-  modal?: { ondismiss?: () => void };
+  payment_id: string;    // e.g. "pay_ABCDEF1234567890"
+  order_id: string;      // e.g. "order_12345"
+  signature: string;     // HMAC-SHA256 to verify server-side
+  amount: string;        // rupees as string e.g. "499.00"
+  payment_mode: string;  // "Card", "UPI", "NetBanking", etc.
+  paid_at: string;       // ISO 8601 timestamp
+  source: string;        // "BankUPG"
+  event: string;         // "payment.success"
 }
 ```
 
@@ -300,7 +281,8 @@ export class CheckoutService {
 
   /**
    * STEP 1: Create a checkout order.
-   * Call this from your backend ideally. If calling from Angular, keep apiKey in backend.
+   * ⚠️  Best practice: call this from your backend, not directly from Angular,
+   *      so the X-Api-Key is never exposed to the browser.
    */
   createOrder(apiKey: string, request: CreateOrderRequest)
     : Observable<ApiResponse<CreateOrderResponse>> {
@@ -311,8 +293,8 @@ export class CheckoutService {
   }
 
   /**
-   * STEP 5: Verify payment signature after customer returns from checkout.
-   * ALWAYS call this before marking the order as paid.
+   * STEP 4: Verify payment signature after customer returns from checkout.
+   * ALWAYS call this server-side before marking the order as paid.
    */
   verifyPayment(apiKey: string, request: VerifyPaymentRequest)
     : Observable<ApiResponse<VerifyPaymentResponse>> {
@@ -333,20 +315,11 @@ export class CheckoutService {
     );
   }
 
-  // ── JS SDK Helper ────────────────────────────────────────────────────────
-
   /**
-   * Dynamically load the BankUPG JS SDK and open the checkout modal.
+   * STEP 2: Redirect customer to the hosted checkout page (full-page).
    */
-  openCheckoutModal(options: BankUPGOptions): void {
-    if (window.BankUPG) {
-      window.BankUPG.open(options);
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = environment.checkoutJsSdk;
-    script.onload = () => window.BankUPG.open(options);
-    document.body.appendChild(script);
+  redirectToCheckout(checkoutUrl: string): void {
+    window.location.href = checkoutUrl;
   }
 }
 ```
@@ -463,7 +436,7 @@ Create a new checkout order.
 **Request:**
 ```json
 {
-  "amount": 49900,
+  "amount": 499.00,
   "currency": "INR",
   "orderRef": "ORD-20260730-001",
   "customerName": "Ramesh Kumar",
@@ -483,7 +456,7 @@ Create a new checkout order.
     "orderId": "order_12345",
     "checkoutToken": "MTIzNDU6YWJjZGVmZ2g",
     "checkoutUrl": "https://apipg.banku.co.in/checkout/MTIzNDU6YWJjZGVmZ2g",
-    "amount": 49900,
+    "amount": 499.00,
     "currency": "INR",
     "orderRef": "ORD-20260730-001",
     "status": "created",
@@ -496,16 +469,41 @@ Create a new checkout order.
 ---
 
 #### `GET /checkout/{token}`
-Opens the BankUPG-hosted checkout UI in browser.
+Opens the BankUPG-hosted checkout UI in the customer's browser.
 
 - **Auth:** None
-- **Usage:** Direct browser redirect or iframe / JS modal
+- **Usage:** Direct full-page redirect **or** load in an `<iframe>` to receive results via `window.postMessage`
 
 ```
 https://apipg.banku.co.in/checkout/MTIzNDU6YWJjZGVmZ2g
 ```
 
-The page shows the merchant's branded payment form with all enabled methods (Card, UPI, NetBanking, etc.).
+The page shows a two-panel branded checkout:
+- **Left panel:** merchant logo/initials, order amount, customer info, secure badge
+- **Right panel:** payment method accordion (UPI ⚡, Card 💳, Net Banking 🏦, Wallet 👛, EMI 📅, Pay Later ⏰)
+
+**Integration approach A — Full-page redirect (recommended):**
+```typescript
+window.location.href = res.data.checkoutUrl;
+// After payment, customer is redirected to callbackUrl with query params
+```
+
+**Integration approach B — Embedded iframe:**
+```html
+<iframe [src]="checkoutUrl" width="100%" height="600"></iframe>
+```
+```typescript
+// Listen for postMessage from the checkout page
+window.addEventListener('message', (event) => {
+  if (event.data?.source === 'BankUPG' && event.data?.event === 'payment.success') {
+    const { payment_id, order_id, signature, amount, payment_mode } = event.data;
+    // Call your backend to verify
+  }
+  if (event.data?.event === 'payment.dismiss') {
+    // Customer pressed Back
+  }
+});
+```
 
 ---
 
@@ -563,7 +561,7 @@ Get current status of any order.
   "data": {
     "orderId": "order_12345",
     "orderRef": "ORD-20260730-001",
-    "amount": 49900,
+    "amount": 499.00,
     "currency": "INR",
     "status": "paid",
     "paymentId": "pay_ABCDEF1234567890",
@@ -728,7 +726,7 @@ Headers:
 
 Body:
 {
-  "amount": 49900,
+  "amount": 499.00,
   "currency": "INR",
   "orderRef": "TEST-001",
   "customerName": "Test User",
@@ -737,6 +735,8 @@ Body:
   "callbackUrl": "https://paymentgateway.banku.co.in/payment/callback"
 }
 ```
+
+> **Amount is in rupees** (decimal). ₹499.00 → send `499` or `499.00`. Valid range: `1` to `10000000`.
 
 **Expected:**
 - `success: true`
@@ -756,10 +756,11 @@ https://apipg.banku.co.in/checkout/MTIzNDU6YWJjZGVmZ2g
 ```
 
 **Expected:**
-- Two-panel checkout page loads
-- Left panel: merchant logo, order amount
-- Right panel: payment method accordion (UPI, Card, Net Banking, etc.)
-- Payment form is functional
+- Two-panel checkout page loads with branded gradient design
+- **Left panel (teal gradient):** merchant logo/initials, order amount (e.g. ₹499.00), customer name/email, secure badge
+- **Right panel (white):** accordion list of enabled payment methods — UPI ⚡, Card 💳, Net Banking 🏦, etc.
+- Clicking a method expands its form
+- Secure payment form is functional
 
 ---
 
@@ -781,13 +782,13 @@ Click **Pay Now**
 - Browser redirects to:
   ```
   https://paymentgateway.banku.co.in/payment/callback
-    ?bankupg_payment_id=pay_XXXXXXXX
-    &bankupg_order_id=order_12345
-    &bankupg_signature=abc123...
+    ?payment_id=pay_XXXXXXXX
+    &order_id=order_12345
+    &signature=abc123...
     &status=success
   ```
 
-✅ **Save:** `bankupg_payment_id`, `bankupg_order_id`, `bankupg_signature` from URL
+✅ **Save:** `payment_id`, `order_id`, `signature` from URL
 
 ---
 
@@ -815,7 +816,7 @@ Body:
   "data": {
     "isValid": true,
     "status": "success",
-    "amount": 49900
+    "amount": 499.00
   }
 }
 ```
@@ -867,26 +868,27 @@ Order status stays `created` (not `paid`).
 
 ---
 
-### TEST 8 — JS SDK Modal (Angular Component)
+### TEST 8 — Angular Integration (Full-Page Redirect)
 
-Add to your Angular component HTML:
+This is the **recommended** integration. Your Angular app creates the order and redirects the customer to the hosted checkout page. After payment, BankUPG redirects back to your `callbackUrl`.
 
+**Template:**
 ```html
-<button (click)="openCheckout()">Pay ₹499</button>
+<button (click)="openCheckout()" [disabled]="loading">
+  {{ loading ? 'Creating order...' : 'Pay ₹499' }}
+</button>
 ```
 
-Component:
-
+**Component:**
 ```typescript
 import { Component, OnInit } from '@angular/core';
 import { CheckoutService } from './services/checkout.service';
-import { BankUPGHandlerResponse } from './models/checkout.models';
-import { Router, ActivatedRoute } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({ selector: 'app-payment', templateUrl: './payment.component.html' })
 export class PaymentComponent implements OnInit {
   apiKey = 'YOUR_API_KEY';
-  currentOrder: any = null;
+  loading = false;
 
   constructor(
     private checkoutService: CheckoutService,
@@ -894,80 +896,77 @@ export class PaymentComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Handle callback from BankUPG after payment
+    // Handle redirect callback from BankUPG after payment
     this.route.queryParams.subscribe(params => {
-      if (params['bankupg_payment_id']) {
+      if (params['payment_id']) {
         this.handleCallback(params);
       }
     });
   }
 
   openCheckout(): void {
+    this.loading = true;
     this.checkoutService.createOrder(this.apiKey, {
-      amount: 49900,
+      amount: 499.00,           // rupees (decimal) — NOT paise
       currency: 'INR',
       orderRef: `ORD-${Date.now()}`,
       customerName: 'Test User',
       customerEmail: 'test@banku.co.in',
       customerPhone: '9999999999',
       callbackUrl: 'https://paymentgateway.banku.co.in/payment/callback'
-    }).subscribe(res => {
-      if (res.success) {
-        this.currentOrder = res.data;
-
-        this.checkoutService.openCheckoutModal({
-          key: this.apiKey,
-          order_id: res.data.orderId,
-          checkout_url: res.data.checkoutUrl,
-          amount: res.data.amount,
-          currency: 'INR',
-          name: 'BankUPG Store',
-          prefill: {
-            name: 'Test User',
-            email: 'test@banku.co.in',
-            contact: '9999999999'
-          },
-          theme: { color: '#009688' },
-          handler: (response: BankUPGHandlerResponse) => {
-            this.verifyPayment(response);
-          },
-          modal: {
-            ondismiss: () => console.log('Customer closed modal')
-          }
-        });
-      }
-    });
-  }
-
-  verifyPayment(response: BankUPGHandlerResponse): void {
-    this.checkoutService.verifyPayment(this.apiKey, {
-      bankupgPaymentId: response.bankupg_payment_id,
-      bankupgOrderId:   response.bankupg_order_id,
-      bankupgSignature: response.bankupg_signature
-    }).subscribe(res => {
-      if (res.success && res.data.isValid) {
-        alert(`✅ Payment Confirmed! ID: ${res.data.paymentId}`);
-        // Mark order as paid in your database
-      } else {
-        alert('❌ Payment verification failed!');
-      }
+    }).subscribe({
+      next: res => {
+        if (res.success) {
+          // Redirect to hosted checkout page
+          this.checkoutService.redirectToCheckout(res.data.checkoutUrl);
+        }
+      },
+      error: () => { this.loading = false; }
     });
   }
 
   handleCallback(params: any): void {
-    // Called when customer returns via callbackUrl redirect
+    // Customer returned via callbackUrl
+    // params: { payment_id, order_id, signature, status }
     if (params['status'] === 'success') {
-      this.verifyPayment({
-        bankupg_payment_id: params['bankupg_payment_id'],
-        bankupg_order_id:   params['bankupg_order_id'],
-        bankupg_signature:  params['bankupg_signature'],
-        amount: 0,
-        payment_mode: '',
-        paid_at: ''
+      this.checkoutService.verifyPayment(this.apiKey, {
+        bankupgPaymentId: params['payment_id'],
+        bankupgOrderId:   params['order_id'],
+        bankupgSignature: params['signature']
+      }).subscribe(res => {
+        if (res.success && res.data.isValid) {
+          console.log('✅ Payment verified! ID:', res.data.paymentId);
+        } else {
+          console.error('❌ Signature verification failed!');
+        }
       });
     }
   }
 }
+```
+
+**Approach B — Embedded iframe with postMessage:**
+```typescript
+// In ngOnInit or constructor:
+window.addEventListener('message', (event) => {
+  if (event.data?.source !== 'BankUPG') return;
+
+  if (event.data.event === 'payment.success') {
+    // event.data: { payment_id, order_id, signature, amount, payment_mode, paid_at }
+    this.checkoutService.verifyPayment(this.apiKey, {
+      bankupgPaymentId: event.data.payment_id,
+      bankupgOrderId:   event.data.order_id,
+      bankupgSignature: event.data.signature
+    }).subscribe(res => {
+      if (res.data.isValid) console.log('✅ Payment confirmed');
+    });
+  }
+
+  if (event.data.event === 'payment.dismiss') {
+    console.log('Customer pressed Back');
+  }
+});
+```
 ```
 
 ---
@@ -1028,11 +1027,12 @@ Authorization: Bearer YOUR_JWT_TOKEN
     "networkName": "Visa",
     "chargeType": "Percentage",
     "chargeValue": 1.80,
-    "transactionAmount": 49900,
-    "chargeAmount": 898.20,
-    "gstAmount": 161.68,
-    "totalDeduction": 1059.88,
-    "netAmount": 48840.12
+    "transactionAmount": 499.00,
+    "chargeAmount": 8.98,
+    "gstAmount": 1.62,
+    "totalDeduction": 10.60,
+    "netAmount": 488.40,
+    "createdDate": "2026-07-30T13:45:23Z"
   }]
 }
 ```
@@ -1101,17 +1101,17 @@ if (res.success) {
 
 ### Test Cards
 
-| Card Number | Network | CVV | Expiry | Expected |
-|-------------|---------|-----|--------|----------|
-| `4111 1111 1111 1111` | Visa | Any 3-digit | Any future | ✅ Success |
-| `4012 8888 8888 1881` | Visa | Any | Any future | ✅ Success |
-| `5200 0000 0000 0007` | Mastercard | Any | Any future | ✅ Success |
-| `5105 1051 0510 5100` | Mastercard | Any | Any future | ✅ Success |
-| `6521 0000 0000 0001` | RuPay | Any | Any future | ✅ Success |
-| `3782 8224 6310 005` | Amex (15-digit) | Any 4-digit | Any future | ✅ Success |
-| `4000 0000 0000 0002` | Visa | Any | Any future | ❌ Declined |
-| `4000 0000 0000 9995` | Visa | Any | Any future | ❌ Insufficient Funds |
-| `4000 0000 0000 9987` | Visa | Any | Any future | ❌ Do Not Honour |
+| Card Number | Network | CVV | Expiry | Brand detected on form | Expected |
+|-------------|---------|-----|--------|------------------------|----------|
+| `4111 1111 1111 1111` | Visa | Any 3-digit | Any future | Visa | ✅ Success |
+| `4012 8888 8888 1881` | Visa | Any | Any future | Visa | ✅ Success |
+| `5200 0000 0000 0007` | Mastercard | Any | Any future | MC | ✅ Success |
+| `5105 1051 0510 5100` | Mastercard | Any | Any future | MC | ✅ Success |
+| `6521 0000 0000 0001` | RuPay | Any | Any future | RuPay | ✅ Success |
+| `3782 8224 6310 005` | Amex (15-digit) | Any 4-digit | Any future | Amex | ✅ Success |
+| `4000 0000 0000 0002` | Visa | Any | Any future | Visa | ❌ Declined |
+| `4000 0000 0000 9995` | Visa | Any | Any future | Visa | ❌ Insufficient Funds |
+| `4000 0000 0000 9987` | Visa | Any | Any future | Visa | ❌ Do Not Honour |
 
 ### Test UPI VPAs
 
@@ -1133,13 +1133,16 @@ if (res.success) {
 
 ### Amount Format
 
-| Rupees | Paise (use this) |
-|--------|-----------------|
-| ₹1.00 | `100` |
-| ₹10.00 | `1000` |
-| ₹100.00 | `10000` |
-| ₹499.00 | `49900` |
-| ₹1,000.00 | `100000` |
+> **Amount is in rupees (decimal), NOT paise.**
+
+| Send this | Displays as |
+|-----------|-------------|
+| `1` | ₹1.00 |
+| `10` | ₹10.00 |
+| `100` | ₹100.00 |
+| `499` or `499.00` | ₹499.00 |
+| `1000` | ₹1,000.00 |
+| `10000000` | ₹1,00,00,000 (max) |
 
 ---
 
@@ -1176,7 +1179,7 @@ if (res.success) {
 ---
 
 ### Error: `Signature verification failed.`
-**Cause:** `bankupg_signature` from URL does not match recomputed HMAC.  
+**Cause:** `signature` from callback URL (or postMessage) does not match recomputed HMAC.  
 **Possible reasons:**
 1. Wrong `api_salt` used
 2. `payment_id` or `order_id` was modified (tampering attempt)
@@ -1210,6 +1213,12 @@ const isValid = expected === receivedSignature.toLowerCase();
 
 ---
 
+### Error: Checkout page loads but amount / merchant name are blank
+**Cause:** JavaScript config failed to parse (network issue or malformed session data).  
+**Fix:** The page will show an error message instead of a blank state. Ensure the token is valid and the order has not expired. Open browser DevTools → Console to see any JS errors.
+
+---
+
 ### Error: File upload returns 400 — `"File type not allowed"`
 **Cause:** Unsupported file extension.  
 **Fix:** Only upload `.jpg`, `.jpeg`, `.png`, `.svg`, `.webp`. Max size: **2 MB**.
@@ -1234,17 +1243,18 @@ Use this checklist to verify all features are working after deployment.
 - [ ] UPI payment succeeds with any valid VPA
 - [ ] UPI payment fails with `fail@upi`
 - [ ] Net Banking payment succeeds
-- [ ] Callback URL receives correct `bankupg_payment_id`, `bankupg_order_id`, `bankupg_signature` params
+- [ ] Callback URL receives correct `payment_id`, `order_id`, `signature` query params
 - [ ] `POST /api/checkout/verify` returns `isValid: true` for legitimate payment
 - [ ] `POST /api/checkout/verify` returns `isValid: false` when signature is tampered
 - [ ] `GET /api/checkout/orders/{orderId}` shows `status: "paid"` after successful payment
 - [ ] Expired order (>30 min) returns `status: "expired"` error on payment attempt
 
-### JS SDK Modal
-- [ ] `BankUPG.open()` opens the checkout in modal/iframe
-- [ ] `handler` callback fires with payment data on success
-- [ ] `modal.ondismiss` fires when modal is closed by customer
-- [ ] `verifyPayment()` called in handler correctly validates the response
+### Iframe / postMessage Integration
+- [ ] Checkout page embedded in `<iframe>` renders correctly
+- [ ] `window.postMessage` with `event: 'payment.success'` fires on success
+- [ ] `postMessage` contains `payment_id`, `order_id`, `signature` fields
+- [ ] `postMessage` with `event: 'payment.dismiss'` fires when customer presses Back
+- [ ] `verifyPayment()` called with `payment_id` / `order_id` / `signature` validates correctly
 
 ### Checkout Customization
 - [ ] `GET /api/checkout-customizations/my` returns `null` for new merchant (no error)
@@ -1287,12 +1297,14 @@ Use this checklist to verify all features are working after deployment.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   MDR CHARGES      GET   /api/transaction-charges/by-transaction/{id}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  SUCCESS CARD     4111 1111 1111 1111
-  FAIL CARD        4000 0000 0000 0002
+  SUCCESS CARD     4111 1111 1111 1111  (Visa)
+  FAIL CARD        4000 0000 0000 0002  (Declined)
   SUCCESS UPI      any@upi
   FAIL UPI         fail@upi
+  AMOUNT FORMAT    Rupees (decimal) e.g. 499 = ₹499.00
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  SIGNATURE        HMAC-SHA256(paymentId + "|" + orderId, api_salt)
+  CALLBACK PARAMS  payment_id, order_id, signature, status
+  SIGNATURE        HMAC-SHA256(payment_id + "|" + order_id, api_salt)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
