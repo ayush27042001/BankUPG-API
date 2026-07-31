@@ -1,8 +1,21 @@
 /* ==========================================================
    BankUPG Hosted Checkout Page — checkout-page.js
-   cfg is set by the inline script injected by the server.
+   cfg is read from <script type="application/json" id="cfg-data">.
+   That block is never executed by the browser, so it does NOT
+   require 'unsafe-inline' in script-src.
    Default logo: https://paymentgateway.banku.co.in/assets/images/bankulogo.png
 ========================================================== */
+
+/* Read checkout session config from the inert JSON data block.
+   This replaces the old inline <script>var cfg = ...</script>
+   approach that required 'unsafe-inline' in script-src. */
+var cfg = null, activeMd = null, selEmiMonths = 3;
+(function () {
+  try {
+    var el = document.getElementById('cfg-data');
+    if (el) cfg = JSON.parse(el.textContent);
+  } catch (e) { cfg = null; }
+})();
 
 var DEFAULT_LOGO = 'https://paymentgateway.banku.co.in/assets/images/bankulogo.png';
 
@@ -74,11 +87,21 @@ function init() {
   var lp = document.querySelector('.pg-left');
   if (lp) lp.style.background = 'linear-gradient(160deg,' + pc + ' 0%,' + pcd + ' 100%)';
 
-  /* ── Logo ── */
+  /* ── Logo — use addEventListener instead of onerror attribute ── */
   var lw = document.getElementById('logoWrap');
   if (lw) {
     var logoSrc = cfg.logoUrl || DEFAULT_LOGO;
-    lw.innerHTML = '<img class="m-logo" src="' + logoSrc + '" alt="logo" onerror="this.outerHTML=\'<div class=m-logo-ph>' + (cfg.merchantName || 'B').charAt(0).toUpperCase() + '</div>\'">';
+    var img = document.createElement('img');
+    img.className = 'm-logo';
+    img.alt = 'logo';
+    img.src = logoSrc;
+    img.addEventListener('error', function () {
+      var ph = document.createElement('div');
+      ph.className = 'm-logo-ph';
+      ph.textContent = (cfg.merchantName || 'B').charAt(0).toUpperCase();
+      img.parentNode && img.parentNode.replaceChild(ph, img);
+    });
+    lw.appendChild(img);
   }
 
   /* ── Merchant name ── */
@@ -112,6 +135,16 @@ function init() {
   /* ── Transaction label ── */
   var txnLbl = document.getElementById('txnLbl');
   if (txnLbl && cfg.orderId) txnLbl.textContent = 'Transaction Id : ' + cfg.orderId;
+
+  /* ── Wire up static element event listeners (no inline onclick needed) ── */
+  var amtChev = document.getElementById('amtChev');
+  if (amtChev) amtChev.addEventListener('click', togDtl);
+
+  var backBtn = document.getElementById('backBtn');
+  if (backBtn) backBtn.addEventListener('click', handleBack);
+
+  var retryBtn = document.getElementById('retryBtn');
+  if (retryBtn) retryBtn.addEventListener('click', function () { location.reload(); });
 
   /* ── Build payment method list ── */
   var modes = (cfg.modes && cfg.modes.length > 0) ? cfg.modes : ['UPI', 'Card', 'NetBanking'];

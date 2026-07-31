@@ -368,24 +368,48 @@ app.UseSwaggerUI(c =>
 // Add Security Headers Middleware
 app.Use(async (context, next) =>
 {
+    var isCheckout = context.Request.Path.StartsWithSegments("/checkout");
+
+    // Register a callback that fires just before response headers are flushed.
+    // Using OnStarting guarantees we run AFTER any earlier middleware or IIS
+    // modules that may have already appended a CSP header, so we can safely
+    // remove the proxy-injected one and replace it with our own single header.
+    context.Response.OnStarting(() =>
+    {
+        // Remove any pre-existing CSP headers (proxy / IIS / other middleware)
+        context.Response.Headers.Remove("Content-Security-Policy");
+        context.Response.Headers.Remove("X-Content-Security-Policy");
+
+        if (isCheckout)
+        {
+            // Checkout hosted pages:
+            //  • style-src unsafe-inline  → lets JS set element.style / CSS vars
+            //  • script-src unsafe-inline → allows the JSON data script block and
+            //                               dynamically-built onclick handlers
+            //  • img-src *               → merchant logos from any CDN / storage URL
+            //  • connect-src self https: → fetch() calls to /api/checkout/pay
+            //  • frame-ancestors *       → page must be embeddable in the SDK iframe
+            context.Response.Headers["Content-Security-Policy"] =
+                "default-src 'self'; " +
+                "style-src 'self' 'unsafe-inline'; " +
+                "script-src 'self' 'unsafe-inline'; " +
+                "img-src * data: blob:; " +
+                "connect-src 'self' https:; " +
+                "frame-ancestors *";
+        }
+        else
+        {
+            context.Response.Headers["Content-Security-Policy"] = "default-src 'self'";
+        }
+
+        return Task.CompletedTask;
+    });
+
     context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
-    if (!context.Request.Path.StartsWithSegments("/checkout"))
+    if (!isCheckout)
         context.Response.Headers.Append("X-Frame-Options", "SAMEORIGIN");
     context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
     context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
-
-    // Checkout hosted pages use external CSS/JS from same origin; merchant logos may
-    // come from any URL; the inline config <script> block requires 'unsafe-inline'.
-    if (context.Request.Path.StartsWithSegments("/checkout"))
-        context.Response.Headers.Append("Content-Security-Policy",
-            "default-src 'self'; " +
-            "style-src 'self'; " +
-            "script-src 'self' 'unsafe-inline'; " +
-            "img-src * data: blob:; " +
-            "connect-src 'self'; " +
-            "frame-ancestors *");
-    else
-        context.Response.Headers.Append("Content-Security-Policy", "default-src 'self'");
 
     await next();
 });

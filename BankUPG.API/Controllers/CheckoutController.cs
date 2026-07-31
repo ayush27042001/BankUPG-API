@@ -227,7 +227,7 @@ namespace BankUPG.API.Controllers
 <meta charset='UTF-8'>
 <meta name='viewport' content='width=device-width, initial-scale=1.0'>
 <title>__PAGE_TITLE__</title>
-<link rel='stylesheet' href='/checkout-page.css'>
+<link rel='stylesheet' href='/checkout-page.css?v=3'>
 </head>
 <body>
 <div class='pg-wrap'>
@@ -244,7 +244,7 @@ namespace BankUPG.API.Controllers
       <div class='amt-lbl'>Total Payable</div>
       <div class='amt-row'>
         <span class='amt-val' id='amtVal'></span>
-        <span class='amt-chev' id='amtChev' onclick='togDtl()'>&#9660;</span>
+        <span class='amt-chev' id='amtChev'>&#9660;</span>
       </div>
       <div class='ord-dtl' id='ordDtl'></div>
     </div>
@@ -275,7 +275,7 @@ namespace BankUPG.API.Controllers
   <div class='pg-right'>
 
     <div class='pg-hdr'>
-      <button class='back-btn' onclick='handleBack()'>&#8592; Back</button>
+      <button class='back-btn' id='backBtn'>&#8592; Back</button>
     </div>
 
     <div class='opt-label'>PAYMENT OPTIONS</div>
@@ -288,7 +288,7 @@ namespace BankUPG.API.Controllers
         <div class='res-amt' id='resAmt'></div>
         <div class='res-sub' id='resSub'></div>
         <div class='res-id' id='resId'></div>
-        <button class='retry-btn' id='retryBtn' onclick='location.reload()'>Try Another Method</button>
+        <button class='retry-btn' id='retryBtn'>Try Another Method</button>
       </div>
     </div>
 
@@ -303,11 +303,9 @@ namespace BankUPG.API.Controllers
 
   </div>
 </div>
-<script>
-var cfg = null, activeMd = null, selEmiMonths = 3;
-try { cfg = __CHECKOUT_CONFIG__; } catch(e) { cfg = null; }
-</script>
-<script src='/checkout-page.js'></script>
+<!-- Config injected by server — parsed by checkout-page.js, never executed -->
+<script type='application/json' id='cfg-data'>__CHECKOUT_CONFIG__</script>
+<script src='/checkout-page.js?v=3'></script>
 <!-- all JS served from /checkout-page.js -->
 <!-- REMOVEME_START
 function init() {
