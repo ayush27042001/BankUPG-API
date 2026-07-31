@@ -100,6 +100,100 @@ namespace BankUPG.Application.Services.CheckoutCustomization
             return true;
         }
 
+        public async Task<CheckoutCustomizationResponse?> GetByUserIdAsync(int userId)
+        {
+            var mid = await _context.Merchants
+                .Where(m => m.UserId == userId)
+                .Select(m => (int?)m.Mid)
+                .FirstOrDefaultAsync();
+            if (mid == null) return null;
+            return await GetByMidAsync(mid.Value);
+        }
+
+        public async Task<CheckoutCustomizationResponse> UpsertByUserIdAsync(int userId, MerchantCheckoutCustomizationRequest request)
+        {
+            var merchant = await _context.Merchants.AsNoTracking()
+                .FirstOrDefaultAsync(m => m.UserId == userId)
+                ?? throw new InvalidOperationException("Merchant profile not found for this user.");
+
+            var existing = await _context.CheckoutCustomizations
+                .FirstOrDefaultAsync(c => c.Mid == merchant.Mid);
+
+            if (existing == null)
+            {
+                var entity = new Infrastructure.Entities.CheckoutCustomization
+                {
+                    Mid = merchant.Mid,
+                    BrandLogoUrl = request.BrandLogoUrl,
+                    PrimaryColor = request.PrimaryColor,
+                    SecondaryColor = request.SecondaryColor,
+                    Language = request.Language,
+                    OwnerSignatureUrl = request.OwnerSignatureUrl,
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedDate = DateTime.UtcNow
+                };
+                _context.CheckoutCustomizations.Add(entity);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Checkout customization created by merchant MID {Mid}", merchant.Mid);
+                return MapToResponse(entity);
+            }
+
+            existing.BrandLogoUrl = request.BrandLogoUrl ?? existing.BrandLogoUrl;
+            existing.PrimaryColor = request.PrimaryColor ?? existing.PrimaryColor;
+            existing.SecondaryColor = request.SecondaryColor ?? existing.SecondaryColor;
+            existing.Language = request.Language ?? existing.Language;
+            existing.OwnerSignatureUrl = request.OwnerSignatureUrl ?? existing.OwnerSignatureUrl;
+            existing.UpdatedDate = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Checkout customization updated by merchant MID {Mid}", merchant.Mid);
+            return MapToResponse(existing);
+        }
+
+        public async Task<string> UploadAssetAsync(int userId, Microsoft.AspNetCore.Http.IFormFile file, string webRootPath, string assetType)
+        {
+            var merchant = await _context.Merchants.AsNoTracking()
+                .FirstOrDefaultAsync(m => m.UserId == userId)
+                ?? throw new InvalidOperationException("Merchant profile not found for this user.");
+
+            var allowed = new[] { ".jpg", ".jpeg", ".png", ".svg", ".webp" };
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!allowed.Contains(ext))
+                throw new InvalidOperationException("Only JPG, PNG, SVG, or WebP files are allowed.");
+            if (file.Length > 2 * 1024 * 1024)
+                throw new InvalidOperationException("File size must not exceed 2 MB.");
+
+            var folder = Path.Combine(webRootPath, "uploads", "checkout-assets");
+            Directory.CreateDirectory(folder);
+            var fileName = $"{assetType}-{merchant.Mid}-{Guid.NewGuid():N}{ext}";
+            var filePath = Path.Combine(folder, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+                await file.CopyToAsync(stream);
+
+            var url = $"/uploads/checkout-assets/{fileName}";
+
+            var customization = await _context.CheckoutCustomizations
+                .FirstOrDefaultAsync(c => c.Mid == merchant.Mid);
+
+            if (customization == null)
+            {
+                customization = new Infrastructure.Entities.CheckoutCustomization
+                {
+                    Mid = merchant.Mid,
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedDate = DateTime.UtcNow
+                };
+                _context.CheckoutCustomizations.Add(customization);
+            }
+
+            if (assetType == "logo") customization.BrandLogoUrl = url;
+            else customization.OwnerSignatureUrl = url;
+            customization.UpdatedDate = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return url;
+        }
+
         private static CheckoutCustomizationResponse MapToResponse(Infrastructure.Entities.CheckoutCustomization c) => new()
         {
             CheckoutCustomizationId = c.CheckoutCustomizationId,

@@ -14,4 +14,9 @@ namespace BankUPG.SharedKernal.Responses
         public DateTime? CreatedDate { get; set; }
         public DateTime? UpdatedDate { get; set; }
     }
+
+    public class UploadAssetResponse
+    {
+        public string Url { get; set; } = null!;
+    }
 }

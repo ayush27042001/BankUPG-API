@@ -75,16 +75,81 @@ namespace BankUPG.Application.Services.TransactionCharge
 
         public async Task<TransactionChargeResponse?> RecalculateAsync(long transactionId)
         {
-            var transaction = await _context.Transactions.AsNoTracking()
+            var transaction = await _context.Transactions
                 .Include(t => t.TransactionCharges)
                 .FirstOrDefaultAsync(t => t.TransactionId == transactionId);
 
             if (transaction == null) return null;
 
-            // TODO: implement actual recalculation using PaymentMethodCharges
             var existing = transaction.TransactionCharges.FirstOrDefault();
-            if (existing == null) return null;
+            var paymentMode = transaction.PaymentMode;
+            var networkName = existing?.NetworkName;
 
+            var charge = await _context.PaymentMethodCharges
+                .Where(c => c.IsActive
+                    && c.PaymentMethodType == paymentMode
+                    && c.NetworkName == networkName)
+                .FirstOrDefaultAsync()
+                ?? await _context.PaymentMethodCharges
+                .Where(c => c.IsActive
+                    && c.PaymentMethodType == paymentMode
+                    && c.NetworkName == null)
+                .FirstOrDefaultAsync();
+
+            if (charge == null)
+            {
+                _logger.LogWarning("No active PaymentMethodCharge for mode '{Mode}' / network '{Network}'.", paymentMode, networkName);
+                return null;
+            }
+
+            var amount = transaction.Amount ?? 0m;
+            decimal chargeAmount;
+
+            if (string.Equals(charge.ChargeType, "Percentage", StringComparison.OrdinalIgnoreCase))
+                chargeAmount = Math.Round(amount * charge.ChargeValue / 100m, 2);
+            else
+                chargeAmount = charge.ChargeValue;
+
+            if (charge.MinCharge.HasValue && chargeAmount < charge.MinCharge.Value) chargeAmount = charge.MinCharge.Value;
+            if (charge.MaxCharge.HasValue && chargeAmount > charge.MaxCharge.Value) chargeAmount = charge.MaxCharge.Value;
+
+            var gstAmount   = Math.Round(chargeAmount * charge.GstPercentage / 100m, 2);
+            var totalDeduct = chargeAmount + gstAmount;
+            var netAmount   = amount - totalDeduct;
+
+            if (existing != null)
+            {
+                existing.PaymentMethodChargeId = charge.PaymentMethodChargeId;
+                existing.ChargeType    = charge.ChargeType;
+                existing.ChargeValue   = charge.ChargeValue;
+                existing.ChargeAmount  = chargeAmount;
+                existing.GstAmount     = gstAmount;
+                existing.TotalDeduction = totalDeduct;
+                existing.NetAmount     = netAmount;
+            }
+            else
+            {
+                existing = new Infrastructure.Entities.TransactionCharge
+                {
+                    TransactionId         = transactionId,
+                    Mid                   = transaction.Mid,
+                    PaymentMethodChargeId = charge.PaymentMethodChargeId,
+                    PaymentMethodType     = paymentMode,
+                    NetworkName           = networkName,
+                    ChargeType            = charge.ChargeType,
+                    ChargeValue           = charge.ChargeValue,
+                    TransactionAmount     = amount,
+                    ChargeAmount          = chargeAmount,
+                    GstAmount             = gstAmount,
+                    TotalDeduction        = totalDeduct,
+                    NetAmount             = netAmount,
+                    CreatedDate           = DateTime.UtcNow
+                };
+                _context.TransactionCharges.Add(existing);
+            }
+
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("TransactionCharge recalculated for Txn={TxnId}, Net={Net}", transactionId, netAmount);
             return MapToResponse(existing);
         }
 

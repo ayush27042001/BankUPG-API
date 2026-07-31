@@ -658,6 +658,198 @@ Each supports the standard patterns exposed by the underlying master service (PO
 
 ---
 
+## Web Checkout Integration (Payment Gateway)
+
+> **Panel:** Both (Merchant Server-Side + Customer Browser)  
+> Auth: `X-Api-Key: <your_api_key>` header for server-side calls. Customer-facing checkout page is anonymous.
+
+---
+
+### Complete Flow
+
+```
+1. Merchant Server  →  POST /api/checkout/orders         (creates order, gets checkout_url)
+2. Customer Browser →  GET  /checkout/{token}            (hosted BankUPG checkout page)
+3. Customer pays    →  POST /api/checkout/pay            (card/UPI/NetBanking — called by checkout page)
+4. Redirect back    →  callback_url?bankupg_payment_id=&bankupg_order_id=&bankupg_signature=
+5. Merchant Server  →  POST /api/checkout/verify         (HMAC signature verification — ALWAYS do this)
+```
+
+---
+
+### Step 1 — Create Order
+
+**`POST /api/checkout/orders`**  
+Header: `X-Api-Key: <api_key>`
+
+**Request:**
+```json
+{
+  "amount": 49900,
+  "currency": "INR",
+  "orderRef": "ORD-20260730-001",
+  "customerName": "Ramesh Kumar",
+  "customerEmail": "ramesh@example.com",
+  "customerPhone": "9876543210",
+  "notes": "callback=https://yoursite.com/payment-callback",
+  "callbackUrl": "https://yoursite.com/payment-callback"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "orderId": "order_12345",
+    "checkoutToken": "MTIzNDU6YWJjZGVmZ2g",
+    "checkoutUrl": "https://pg.bankupg.com/checkout/MTIzNDU6YWJjZGVmZ2g",
+    "amount": 49900,
+    "currency": "INR",
+    "status": "created",
+    "expiryDate": "2026-07-30T14:00:00Z"
+  }
+}
+```
+
+> `amount` is in paise (49900 = ₹499.00). The `checkoutUrl` is what you open for the customer.
+
+---
+
+### Step 2 — Embed JS SDK (optional modal approach)
+
+```html
+<script src="https://pg.bankupg.com/checkout.js"></script>
+<script>
+  var handler = BankUPG.open({
+    key:          "your_api_key",
+    order_id:     "order_12345",
+    checkout_url: "https://pg.bankupg.com/checkout/TOKEN",
+    amount:       49900,
+    currency:     "INR",
+    name:         "Acme Corp",
+    prefill: {
+      name:    "Ramesh Kumar",
+      email:   "ramesh@example.com",
+      contact: "9876543210"
+    },
+    theme: { color: "#1a73e8" },
+    handler: function(response) {
+      // response.bankupg_payment_id
+      // response.bankupg_order_id
+      // response.bankupg_signature
+      // POST these 3 values to your server → POST /api/checkout/verify
+      verifyPaymentOnServer(response);
+    },
+    modal: {
+      ondismiss: function() { console.log("Modal closed"); }
+    }
+  });
+</script>
+```
+
+**Direct redirect** (without SDK): Simply redirect the customer to `checkoutUrl`.
+
+---
+
+### Step 3 — Checkout Page (Auto)
+
+`GET /checkout/{token}`  
+Opens the BankUPG-hosted checkout UI in browser. No auth needed.  
+Supports: **Card**, **UPI**, **Net Banking** tabs (configured per merchant via `MerchantPaymentMethods`).
+
+---
+
+### Step 4 — After Payment: Callback
+
+The customer is redirected to your `callbackUrl`:
+```
+https://yoursite.com/payment-callback
+  ?bankupg_payment_id=pay_ABCDEF123456
+  &bankupg_order_id=order_12345
+  &bankupg_signature=a3f8c2e1...
+  &status=success
+```
+
+---
+
+### Step 5 — Verify Payment (CRITICAL — always do server-side)
+
+**`POST /api/checkout/verify`**  
+Header: `X-Api-Key: <api_key>`
+
+**Request:**
+```json
+{
+  "bankupgPaymentId": "pay_ABCDEF123456",
+  "bankupgOrderId":   "order_12345",
+  "bankupgSignature": "a3f8c2e1..."
+}
+```
+
+**Response (valid):**
+```json
+{
+  "success": true,
+  "data": {
+    "isValid": true,
+    "paymentId": "pay_ABCDEF123456",
+    "orderId": "order_12345",
+    "status": "success",
+    "amount": 49900,
+    "paymentMode": "Card",
+    "paidAt": "2026-07-30T13:45:22Z"
+  }
+}
+```
+
+**Signature Algorithm:**
+```
+HMAC-SHA256(paymentId + "|" + orderId, api_salt)
+```
+
+---
+
+### Get Order Status
+
+**`GET /api/checkout/orders/{orderId}`**  
+Header: `X-Api-Key: <api_key>`
+
+```json
+{
+  "success": true,
+  "data": {
+    "orderId": "order_12345",
+    "status": "paid",
+    "paymentId": "pay_ABCDEF123456",
+    "paymentMode": "Card",
+    "amount": 49900,
+    "paidAt": "2026-07-30T13:45:22Z"
+  }
+}
+```
+
+---
+
+### Test Cards (Demo / RBI Demo)
+
+| Card Number          | Expected Result |
+|----------------------|-----------------|
+| `4111 1111 1111 1111` | ✅ Success      |
+| `5200 0000 0000 0007` | ✅ Success      |
+| `4000 0000 0000 0002` | ❌ Declined     |
+| `4000 0000 0000 9995` | ❌ Insufficient Funds |
+| Any UPI VPA           | ✅ Success      |
+| `fail@upi`            | ❌ Failed       |
+
+---
+
+### CORS / Allowed Origins
+
+The checkout page can be embedded as an iframe from any origin. API calls require `X-Api-Key` header only.
+
+---
+
 ## Notes for Angular Developer
 - All `GET` list endpoints return `ApiResponse<PagedResponse<T>>`.
 - Dates are ISO-8601 with time (`2026-07-23T18:30:00`).
