@@ -231,10 +231,16 @@ namespace BankUPG.API.Controllers
 </head>
 <body>
 <div class='pg-wrap'>
+
+  <!-- ── LEFT PANEL (desktop branding strip) ── -->
   <div class='pg-left'>
-    <div class='logo-wrap' id='logoWrap'></div>
-    <div class='m-name' id='mName'></div>
-    <div style='position:relative;z-index:1'>
+
+    <div class='pg-brand'>
+      <div class='logo-wrap' id='logoWrap'></div>
+      <div class='m-name' id='mName'></div>
+    </div>
+
+    <div class='pg-amount-section'>
       <div class='amt-lbl'>Total Payable</div>
       <div class='amt-row'>
         <span class='amt-val' id='amtVal'></span>
@@ -242,24 +248,39 @@ namespace BankUPG.API.Controllers
       </div>
       <div class='ord-dtl' id='ordDtl'></div>
     </div>
+
     <div class='cust-info' id='custInfo'></div>
     <div class='l-spacer'></div>
-    <div>
+
+    <div class='pg-secure'>
       <div class='sec-row'>
-        <svg width='13' height='15' viewBox='0 0 13 15' fill='none' style='flex-shrink:0'><path d='M6.5 0L0 2.7v4.9c0 3.6 2.8 6.9 6.5 7.6 3.7-.7 6.5-4 6.5-7.6V2.7L6.5 0z' fill='rgba(255,255,255,0.7)'/></svg>
-        Secured by BankUPG
+        <svg width='13' height='15' viewBox='0 0 13 15' fill='none' style='flex-shrink:0'>
+          <path d='M6.5 0L0 2.7v4.9c0 3.6 2.8 6.9 6.5 7.6 3.7-.7 6.5-4 6.5-7.6V2.7L6.5 0z' fill='rgba(255,255,255,0.7)'/>
+        </svg>
+        Secure Checkout
       </div>
       <div class='txn-lbl' id='txnLbl'></div>
     </div>
+
   </div>
+
+  <!-- ── MOBILE AMOUNT CARD (shown between top-bar and payment list on mobile) ── -->
+  <div class='mob-card'>
+    <div class='mob-amt-lbl'>Amount To Pay</div>
+    <div class='mob-amt-val' id='mobAmtVal'></div>
+    <div class='mob-secure'>Secure Payment Gateway</div>
+  </div>
+
+  <!-- ── RIGHT PANEL (payment options) ── -->
   <div class='pg-right'>
+
     <div class='pg-hdr'>
       <button class='back-btn' onclick='handleBack()'>&#8592; Back</button>
-      <span class='pg-hdr-title'>Pay Securely</span>
-      <div class='hdr-avatar'>&#x1F464;</div>
     </div>
-    <div class='opt-label'>Choose Payment Method</div>
+
+    <div class='opt-label'>PAYMENT OPTIONS</div>
     <div class='opt-list' id='optList'></div>
+
     <div class='res-ov' id='resOv'>
       <div class='res-box'>
         <div class='res-ico' id='resIco'></div>
@@ -270,18 +291,19 @@ namespace BankUPG.API.Controllers
         <button class='retry-btn' id='retryBtn' onclick='location.reload()'>Try Another Method</button>
       </div>
     </div>
+
     <div class='pg-foot'>
-      <span class='pow-by'>Powered by BankUPG</span>
+      <span class='pow-by'>Powered by <strong>BankU</strong></span>
       <div class='net-tags'>
         <span class='net-tag'>VISA</span>
-        <span class='net-tag'>MASTERCARD</span>
-        <span class='net-tag'>RUPAY</span>
+        <span class='net-tag'>Mastercard</span>
+        <span class='net-tag'>RuPay</span>
       </div>
     </div>
+
   </div>
 </div>
 <script>
-/* Injected by server — defines the session config for checkout-page.js */
 var cfg = null, activeMd = null, selEmiMonths = 3;
 try { cfg = __CHECKOUT_CONFIG__; } catch(e) { cfg = null; }
 </script>
