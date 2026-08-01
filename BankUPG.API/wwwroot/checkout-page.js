@@ -1,20 +1,25 @@
 /* ==========================================================
-   BankUPG Hosted Checkout — checkout-page.js  v5
-   Razorpay-inspired modern checkout UI.
+   BankUPG Hosted Checkout — checkout-page.js  v6
+   Premium redesign. Fully dynamic: reads all merchant
+   branding, amount, and enabled payment modes from the
+   server-injected JSON config block.
 
-   cfg is read from <script type="application/json" id="cfg-data">
-   which the browser never executes, so zero script-src CSP concern.
-
-   Merchant branding is applied by injecting a <style id="brand-style">
-   element — this requires style-src 'unsafe-inline' (set by our
-   Program.cs middleware for /checkout paths only) but DOES NOT use
-   element.style.setProperty() which may be blocked more aggressively.
-   The CSS also has hard-coded #009688 fallbacks so the left panel
-   is always visible even if the style injection is blocked.
+   Config injected by server:
+     cfg.token          — session token
+     cfg.amount         — formatted amount string (e.g. "499.00")
+     cfg.amountSymbol   — currency symbol (e.g. "₹")
+     cfg.orderId        — order ID
+     cfg.orderRef       — merchant's own reference
+     cfg.merchantName   — merchant display name
+     cfg.logoUrl        — merchant logo URL
+     cfg.primaryColor   — hex brand color
+     cfg.secondaryColor — hex secondary color
+     cfg.customerName   / cfg.customerEmail / cfg.customerPhone
+     cfg.modes          — array of enabled payment modes
 ========================================================== */
 
-/* ── Read config from inert JSON block ── */
-var cfg = null, activeMd = null, selEmiMonths = 3;
+/* ── Read config ── */
+var cfg = null;
 (function () {
   try {
     var el = document.getElementById('cfg-data');
@@ -22,39 +27,24 @@ var cfg = null, activeMd = null, selEmiMonths = 3;
   } catch (e) { cfg = null; }
 })();
 
-/* ── Default BankU logo (same origin → no cross-domain / CSP concern) ── */
-var DEFAULT_LOGO = '/images/bankulogo.png';
+/* ── Helpers ── */
+function esc(s) {
+  return String(s || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
-/* ── SVG icons for each payment method ── */
-var ICONS = {
-  UPI:        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>',
-  Card:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><line x1="2" y1="10" x2="22" y2="10"/></svg>',
-  NetBanking: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 10v11M12 10v11M16 10v11"/></svg>',
-  Wallet:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><circle cx="16" cy="13" r="1" fill="currentColor" stroke="none"/><path d="M16 7V5a2 2 0 00-2-2H6a2 2 0 00-2 2v2"/></svg>',
-  EMI:        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h2l1 2 2-4 1 2h2"/></svg>',
-  PayLater:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
-  _default:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><line x1="2" y1="10" x2="22" y2="10"/></svg>'
-};
-
-/* ── Payment mode display metadata ── */
-var modeInfo = {
-  UPI:        { lbl: 'UPI',         sub: 'GPay, PhonePe, Paytm & more' },
-  Card:       { lbl: 'Cards',       sub: 'Credit & Debit — Visa, MC, RuPay' },
-  NetBanking: { lbl: 'Net Banking', sub: 'All major banks supported' },
-  Wallet:     { lbl: 'Wallet',      sub: 'Paytm, PhonePe, MobiKwik & more' },
-  EMI:        { lbl: 'EMI',         sub: 'Easy monthly instalments' },
-  PayLater:   { lbl: 'Pay Later',   sub: 'Buy now, pay within 30 days' }
-};
-
-/* ── Chevron SVG ── */
-var CHEV_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
-
-/* ─────────────────────────────────────────────────────── */
-
-/** Darken/lighten a hex colour (negative pct = darker). */
-function shadeColor(hex, pct) {
+function hex2rgb(hex) {
   try {
-    var h = hex.replace('#', '');
+    var h = hex.replace('#','');
+    if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)].join(',');
+  } catch(e) { return '37,99,235'; }
+}
+
+function shade(hex, pct) {
+  try {
+    var h = hex.replace('#','');
     if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
     var r = Math.min(255, Math.max(0, parseInt(h.slice(0,2),16) + Math.round(255*pct/100)));
     var g = Math.min(255, Math.max(0, parseInt(h.slice(2,4),16) + Math.round(255*pct/100)));
@@ -63,497 +53,807 @@ function shadeColor(hex, pct) {
   } catch(e) { return hex; }
 }
 
-/** Convert #rrggbb → "r,g,b" for CSS rgba(). */
-function hexToRgb(hex) {
-  try {
-    var h = hex.replace('#', '');
-    if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
-    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)].join(',');
-  } catch(e) { return '0,150,136'; }
-}
-
-/**
- * Inject merchant brand colours via a <style> element.
- * Using a <style> node (rather than element.style.setProperty) is
- * more reliable when the browser is strict about CSP style-src:
- * 'unsafe-inline' covers <style> blocks.  The CSS already has
- * hard-coded #009688 fallbacks, so even if this injection is blocked
- * the left panel background is still visible.
- */
-function applyBrand(pc, pcd) {
-  var rgb = hexToRgb(pc);
-  /* Remove previous inject (page re-use guard) */
-  var old = document.getElementById('brand-style');
-  if (old) old.parentNode.removeChild(old);
-
+/* ── Apply merchant brand via CSS custom properties ── */
+function applyBrand(pc, sc) {
+  var rgb = hex2rgb(pc);
+  var old = document.getElementById('brand-vars');
+  if (old) old.remove();
   var s = document.createElement('style');
-  s.id = 'brand-style';
-  s.textContent =
-    ':root{--pc:' + pc + ';--pc-dark:' + pcd + ';--pc-rgb:' + rgb + '}' +
-    '.pg-left{' +
-      'background-color:' + pc + '!important;' +
-      'background-image:linear-gradient(155deg,' + pc + ' 0%,' + pcd + ' 100%)!important' +
-    '}' +
-    '.mob-amt-val{color:' + pc + '!important}' +
-    '.pay-btn:not([disabled]){background:' + pc + '!important}' +
-    '.res-ov.success-ov{' +
-      'background-color:' + pc + '!important;' +
-      'background-image:linear-gradient(155deg,' + pc + ' 0%,' + pcd + ' 100%)!important' +
-    '}';
-  (document.head || document.documentElement).appendChild(s);
+  s.id = 'brand-vars';
+  s.textContent = ':root{--pc:' + pc + ';--pc-dark:' + shade(pc,-18) + ';--sc:' + sc + ';--pc-rgb:' + rgb + '}';
+  document.head.appendChild(s);
 }
 
-/* ─────────────────────────────────────────────────────── */
+/* ── SVG Icons ── */
+var ICONS = {
+  upi:        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>',
+  debitCard:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><line x1="2" y1="10" x2="22" y2="10"/><circle cx="7" cy="15" r="1" fill="currentColor" stroke="none"/></svg>',
+  creditCard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><line x1="2" y1="10" x2="22" y2="10"/><rect x="14" y="13" width="4" height="2" rx="0.5" fill="currentColor" stroke="none"/></svg>',
+  netBanking: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 10v11M12 10v11M16 10v11"/></svg>',
+  wallet:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><circle cx="16" cy="13" r="1" fill="currentColor" stroke="none"/><path d="M16 7V5a2 2 0 00-2-2H6a2 2 0 00-2 2v2"/></svg>',
+  payLater:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+  emi:        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h2l1 2 2-4 1 2h2"/></svg>',
+  qr:         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z"/></svg>',
+  shield:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  check:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  close:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  lock:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>',
+  chev:       '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'
+};
 
+/* ── Payment method metadata ── */
+var PM_META = {
+  UPI:        { key:'upi',        lbl:'UPI',         sub:'GPay, PhonePe, Paytm & more',  icon:'upi' },
+  Card:       { key:'debitCard',  lbl:'Debit Card',   sub:'Visa, Mastercard, RuPay',       icon:'debitCard' },
+  NetBanking: { key:'netBanking', lbl:'Net Banking',  sub:'All major banks',               icon:'netBanking' },
+  Wallet:     { key:'wallet',     lbl:'Wallets',      sub:'Paytm, PhonePe, MobiKwik',      icon:'wallet' },
+  EMI:        { key:'emi',        lbl:'EMI',          sub:'Easy monthly instalments',      icon:'emi' },
+  PayLater:   { key:'payLater',   lbl:'Pay Later',    sub:'Buy now, pay within 30 days',   icon:'payLater' }
+};
+
+/* Extra items appended regardless of cfg.modes */
+var EXTRA_METHODS = [
+  { key:'creditCard', lbl:'Credit Card', sub:'Visa, Mastercard, Amex', icon:'creditCard' },
+  { key:'qr',         lbl:'QR Code',     sub:'Scan with any UPI app',  icon:'qr' }
+];
+
+/* UPI apps */
+var UPI_APPS = [
+  { id:'gpay',     name:'Google Pay',   color:'#4285F4', init:'G' },
+  { id:'phonepe',  name:'PhonePe',      color:'#5f259f', init:'P' },
+  { id:'paytm',    name:'Paytm',        color:'#00BAF2', init:'Pa'},
+  { id:'bhim',     name:'BHIM',         color:'#00529C', init:'B' },
+  { id:'amazon',   name:'Amazon Pay',   color:'#FF9900', init:'A', dark:true },
+  { id:'whatsapp', name:'WhatsApp Pay', color:'#25D366', init:'W' }
+];
+
+/* Popular banks */
+var BANKS = [
+  { id:'sbi',   name:'SBI',   color:'#1565C0' },
+  { id:'hdfc',  name:'HDFC',  color:'#004B87' },
+  { id:'icici', name:'ICICI', color:'#F58220' },
+  { id:'axis',  name:'Axis',  color:'#97144D' },
+  { id:'kotak', name:'Kotak', color:'#E31837' },
+  { id:'bob',   name:'BoB',   color:'#F05A22' }
+];
+
+/* Wallets */
+var WALLETS = [
+  { id:'paytm',    name:'Paytm',      color:'#00BAF2', init:'Pa'},
+  { id:'phonepe',  name:'PhonePe',    color:'#5f259f', init:'P' },
+  { id:'mobikwik', name:'MobiKwik',   color:'#1A237E', init:'M' },
+  { id:'amazon',   name:'Amazon Pay', color:'#FF9900', init:'A', dark:true },
+  { id:'airtel',   name:'Airtel Pay', color:'#ED1C24', init:'Ai'},
+  { id:'jio',      name:'JioMoney',   color:'#0C2E7E', init:'J' }
+];
+
+/* ── State ── */
+var activeMethod = 'upi';
+var selectedUpiApp = null;
+var selectedBank   = null;
+var selectedWallet = null;
+var selEmiMonths   = 3;
+var showCvv        = false;
+var amountStr      = '';
+var payBtn         = null;
+
+/* ═══════════════════════════════════════
+   INIT
+═══════════════════════════════════════ */
 function init() {
+
   if (!cfg) {
-    var ol = document.getElementById('optList');
-    if (ol) ol.innerHTML =
-      '<div style="padding:32px 20px;text-align:center;color:#dc2626;font-size:13px;">' +
-      'Unable to load payment session.<br>Please go back and try again.</div>';
+    document.body.innerHTML =
+      '<div class="ck-error-page">' +
+        '<div class="ck-error-icon">' + ICONS.close.replace('stroke="currentColor"','stroke="#EF4444"') + '</div>' +
+        '<div class="ck-error-title">Unable to Load</div>' +
+        '<div class="ck-error-msg">Invalid payment session. Please go back and try again.</div>' +
+      '</div>';
     return;
   }
 
-  var pc  = cfg.primaryColor || '#009688';
-  var pcd = shadeColor(pc, -22);
+  /* Brand colors */
+  var pc = cfg.primaryColor  || '#2563EB';
+  var sc = cfg.secondaryColor || '#7C3AED';
+  applyBrand(pc, sc);
 
-  /* Apply brand colour via style injection (robust vs element.style CSP issues) */
-  applyBrand(pc, pcd);
+  /* Amount string */
+  var sym  = cfg.amountSymbol || '₹';
+  var amt  = cfg.amount || '0.00';
+  amountStr = sym + amt;
 
-  /* ── Logo ── */
-  var lw = document.getElementById('logoWrap');
-  if (lw) {
-    var logoSrc = (cfg.logoUrl && cfg.logoUrl.trim()) ? cfg.logoUrl : DEFAULT_LOGO;
-    var img = document.createElement('img');
-    img.className = 'm-logo';
-    img.alt = 'logo';
-    img.src = logoSrc;
-    img.addEventListener('error', function () {
-      var ph = document.createElement('div');
-      ph.className = 'm-logo-ph';
-      ph.textContent = (cfg.merchantName || 'B').charAt(0).toUpperCase();
-      if (img.parentNode) img.parentNode.replaceChild(ph, img);
+  /* ── Header: Logo ── */
+  var logoWrap = document.getElementById('logoWrap');
+  if (logoWrap) {
+    if (cfg.logoUrl && cfg.logoUrl.trim()) {
+      var img = document.createElement('img');
+      img.className = 'ck-logo';
+      img.alt = esc(cfg.merchantName || 'Logo');
+      img.src = cfg.logoUrl;
+      img.onerror = function () {
+        var ph = buildLogoPh(cfg.merchantName || 'B');
+        logoWrap.replaceChild(ph, img);
+      };
+      logoWrap.appendChild(img);
+    } else {
+      logoWrap.appendChild(buildLogoPh(cfg.merchantName || 'B'));
+    }
+  }
+
+  /* Merchant name */
+  var mNameEl = document.getElementById('mName');
+  if (mNameEl) mNameEl.textContent = cfg.merchantName || 'BankU Pay';
+
+  /* Paying-to */
+  var payingToEl = document.getElementById('payingTo');
+  if (payingToEl) payingToEl.textContent = cfg.merchantName || 'BankU Technologies';
+
+  /* Amount */
+  var amtEl = document.getElementById('amtVal');
+  if (amtEl) amtEl.textContent = amountStr;
+
+  /* Pay button text */
+  payBtn = document.getElementById('payBtn');
+  if (payBtn) {
+    payBtn.innerHTML =
+      '<span class="btn-lock">' + ICONS.lock + '</span>' +
+      '<span class="btn-lbl">Pay ' + esc(amountStr) + '</span>';
+    payBtn.addEventListener('click', handlePay);
+  }
+
+  /* Close button */
+  var closeEl = document.getElementById('closeBtn');
+  if (closeEl) {
+    closeEl.addEventListener('click', function () {
+      window.parent.postMessage({ source: 'BankUPG', event: 'payment.dismiss' }, '*');
     });
-    lw.appendChild(img);
   }
 
-  /* ── Merchant name ── */
-  var mn = document.getElementById('mName');
-  if (mn) mn.textContent = cfg.merchantName || 'BankUPG';
+  /* Build payment method list */
+  buildMethodList();
 
-  /* ── Amount — C# now sends ₹ directly so textContent is safe ── */
-  var sym    = cfg.amountSymbol || '';
-  var amtRaw = cfg.amount || '';
-  var amtStr = sym + amtRaw;
+  /* Show default panel */
+  showPanel(activeMethod);
+}
 
-  var amtEl  = document.getElementById('amtVal');
-  if (amtEl) amtEl.textContent = amtStr;
+/* ── Logo placeholder ── */
+function buildLogoPh(name) {
+  var div = document.createElement('div');
+  div.className = 'ck-logo-ph';
+  div.textContent = (name || 'B').charAt(0).toUpperCase();
+  return div;
+}
 
-  var mobAmt = document.getElementById('mobAmtVal');
-  if (mobAmt) mobAmt.textContent = amtStr;
+/* ═══════════════════════════════════════
+   BUILD PAYMENT METHOD LIST (Left panel)
+═══════════════════════════════════════ */
+function buildMethodList() {
+  var container = document.getElementById('pmList');
+  if (!container) return;
 
-  /* ── Order ref (expandable) ── */
-  var ordDtl = document.getElementById('ordDtl');
-  if (ordDtl) ordDtl.innerHTML = 'Ref: <strong>' + (cfg.orderRef || '') + '</strong>';
+  var inner = document.createElement('div');
+  inner.className = 'pm-list-inner';
+  container.appendChild(inner);
 
-  /* ── Customer info ── */
-  var ci = document.getElementById('custInfo');
-  if (ci && (cfg.customerName || cfg.customerEmail)) {
-    var ch = '';
-    if (cfg.customerName)  ch += '<div class="cust-row"><span>&#x1F464;</span><span>' + esc(cfg.customerName)  + '</span></div>';
-    if (cfg.customerEmail) ch += '<div class="cust-row"><span>&#x2709;</span><span>'  + esc(cfg.customerEmail) + '</span></div>';
-    if (cfg.customerPhone) ch += '<div class="cust-row"><span>&#x1F4F1;</span><span>' + esc(cfg.customerPhone) + '</span></div>';
-    ci.innerHTML = ch;
+  /* Build ordered list from cfg.modes + deduplication */
+  var methods = [];
+  var seen = {};
+
+  if (cfg.modes && cfg.modes.length > 0) {
+    cfg.modes.forEach(function (mode) {
+      var meta = PM_META[mode];
+      if (meta && !seen[meta.key]) {
+        methods.push(meta);
+        seen[meta.key] = true;
+      }
+    });
+  } else {
+    /* Fallback: show all */
+    Object.keys(PM_META).forEach(function (k) {
+      var m = PM_META[k];
+      if (!seen[m.key]) { methods.push(m); seen[m.key] = true; }
+    });
   }
 
-  /* ── Transaction ID label ── */
-  var txnLbl = document.getElementById('txnLbl');
-  if (txnLbl && cfg.orderId) txnLbl.textContent = 'Txn: ' + cfg.orderId;
+  /* Append extra (credit card + QR) if not already present */
+  EXTRA_METHODS.forEach(function (m) {
+    if (!seen[m.key]) { methods.push(m); seen[m.key] = true; }
+  });
 
-  /* ── Wire static element listeners (no inline onclick needed) ── */
-  var amtChev = document.getElementById('amtChev');
-  if (amtChev) amtChev.addEventListener('click', togDtl);
-
-  var backBtn = document.getElementById('backBtn');
-  if (backBtn) backBtn.addEventListener('click', handleBack);
-
-  var retryBtn = document.getElementById('retryBtn');
-  if (retryBtn) retryBtn.addEventListener('click', function () { location.reload(); });
-
-  /* ── Build payment method list ── */
-  var modes = (cfg.modes && cfg.modes.length > 0) ? cfg.modes : ['UPI', 'Card', 'NetBanking'];
-  buildList(modes, pc);
-}
-
-/* ── Simple HTML escaping for user-supplied strings ── */
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-/* ─────────────────────────────────────────────────────── */
-
-function buildList(modes, pc) {
-  var ol = document.getElementById('optList');
-  if (!ol) return;
-  ol.innerHTML = '';
-  modes.forEach(function (m) {
-    var mi  = modeInfo[m] || { lbl: m, sub: '' };
-    var ico = ICONS[m] || ICONS._default;
-    var row = document.createElement('div');
-    row.className = 'opt-row';
-    row.id = 'row-' + m;
-    row.innerHTML =
-      '<div class="opt-hdr" onclick="togMode(\'' + m + '\')">' +
-        '<div class="opt-info">' +
-          '<div class="opt-ico-wrap">' + ico + '</div>' +
-          '<div class="opt-meta">' +
-            '<span class="opt-lbl">' + mi.lbl + '</span>' +
-            (mi.sub ? '<span class="opt-sub">' + mi.sub + '</span>' : '') +
-          '</div>' +
-        '</div>' +
-        '<span class="opt-chev">' + CHEV_SVG + '</span>' +
-      '</div>' +
-      '<div class="opt-form" id="form-' + m + '">' + buildForm(m, pc) + '</div>';
-    ol.appendChild(row);
+  methods.forEach(function (m) {
+    inner.appendChild(buildMethodItem(m));
   });
 }
 
-function buildForm(m, pc) {
-  var sym = cfg.amountSymbol || '', amt = cfg.amount || '', p = sym + amt;
-  var btnStyle = 'style="background:' + pc + '"';
+function buildMethodItem(m) {
+  var btn = document.createElement('button');
+  btn.className = 'pm-item' + (m.key === activeMethod ? ' active' : '');
+  btn.dataset.key = m.key;
+  btn.innerHTML =
+    '<div class="pm-ico">' + (ICONS[m.icon] || ICONS.upi) + '</div>' +
+    '<div class="pm-text">' +
+      '<span class="pm-lbl">' + esc(m.lbl) + '</span>' +
+      '<span class="pm-sub">' + esc(m.sub) + '</span>' +
+    '</div>' +
+    '<div class="pm-chev">' + ICONS.chev + '</div>' +
+    '<span class="pm-mobile-lbl">' + esc(m.lbl) + '</span>';
 
-  if (m === 'Card') return '<div class="fb">' +
-    '<div class="fld"><span class="flbl">Card Number</span>' +
-    '<div class="cin-wrap"><input class="finp" type="text" id="cardNum" placeholder="0000 0000 0000 0000" maxlength="19" oninput="fmtCard(this)" autocomplete="cc-number">' +
-    '<span class="cbrand" id="cbrand"></span></div></div>' +
-    '<div class="fld"><span class="flbl">Name on Card</span>' +
-    '<input class="finp" type="text" id="cardName" placeholder="JOHN SMITH" value="' + esc(cfg.customerName || '') + '" autocomplete="cc-name"></div>' +
-    '<div class="frow2">' +
-    '<div class="fld"><span class="flbl">Expiry (MM/YY)</span>' +
-    '<input class="finp" type="text" id="cardExp" placeholder="MM / YY" maxlength="7" oninput="fmtExp(this)" autocomplete="cc-exp"></div>' +
-    '<div class="fld"><span class="flbl">CVV</span>' +
-    '<input class="finp" type="password" id="cardCvv" placeholder="•••" maxlength="4" autocomplete="cc-csc"></div></div>' +
-    '<div class="err-box" id="cardErr"></div>' +
-    '<button class="pay-btn" id="payCardBtn" onclick="payCard()" ' + btnStyle + '>Pay ' + p + '</button></div>';
+  btn.addEventListener('click', function () {
+    var all = document.querySelectorAll('.pm-item');
+    all.forEach(function (el) { el.classList.remove('active'); });
+    btn.classList.add('active');
+    activeMethod = m.key;
+    selectedUpiApp = null;
+    selectedBank   = null;
+    selectedWallet = null;
+    showPanel(m.key);
+    resetPayBtn();
+  });
 
-  if (m === 'UPI') return '<div class="fb">' +
-    '<div class="fld"><span class="flbl">UPI ID / VPA</span>' +
-    '<input class="finp" type="text" id="upiVpa" placeholder="yourname@okhdfc" autocomplete="off">' +
-    '<span class="fhint">Enter your UPI ID linked to any bank account</span></div>' +
-    '<div class="upi-logos"><span style="font-size:11px;color:#9ba8bb">Pay via:</span>' +
-    '<span class="upi-logo">GPay</span><span class="upi-logo">PhonePe</span>' +
-    '<span class="upi-logo">Paytm</span><span class="upi-logo">BHIM</span></div>' +
-    '<div class="err-box" id="upiErr"></div>' +
-    '<button class="pay-btn" id="payUpiBtn" onclick="payUpi()" ' + btnStyle + '>Pay ' + p + '</button></div>';
-
-  if (m === 'NetBanking') return '<div class="fb">' +
-    '<div class="fld"><span class="flbl">Select Your Bank</span>' +
-    '<select class="fsel" id="bankCode"><option value="">-- Select Bank --</option>' +
-    '<option value="HDFCBANK">HDFC Bank</option><option value="SBIN">State Bank of India</option>' +
-    '<option value="ICICIBANK">ICICI Bank</option><option value="AXISBANK">Axis Bank</option>' +
-    '<option value="KOTAKBANK">Kotak Mahindra Bank</option><option value="INDUSIND">IndusInd Bank</option>' +
-    '<option value="YESBANK">Yes Bank</option><option value="PNBRETAIL">Punjab National Bank</option>' +
-    '<option value="BOBIRETAIL">Bank of Baroda</option><option value="UNIONBANK">Union Bank of India</option>' +
-    '</select></div>' +
-    '<div class="err-box" id="nbErr"></div>' +
-    '<button class="pay-btn" id="payNbBtn" onclick="payNb()" ' + btnStyle + '>Pay ' + p + '</button></div>';
-
-  if (m === 'Wallet') return '<div class="fb">' +
-    '<div class="fld"><span class="flbl">Select Wallet</span>' +
-    '<div class="wallet-grid">' +
-    '<div class="w-item" onclick="payWallet(this,\'Paytm\')">Paytm</div>' +
-    '<div class="w-item" onclick="payWallet(this,\'PhonePe\')">PhonePe</div>' +
-    '<div class="w-item" onclick="payWallet(this,\'MobiKwik\')">MobiKwik</div>' +
-    '<div class="w-item" onclick="payWallet(this,\'Airtel\')">Airtel</div>' +
-    '<div class="w-item" onclick="payWallet(this,\'Ola\')">Ola Money</div>' +
-    '<div class="w-item" onclick="payWallet(this,\'Amazon\')">Amazon Pay</div>' +
-    '</div></div><div class="err-box" id="walletErr"></div></div>';
-
-  if (m === 'EMI') return '<div class="fb">' +
-    '<div class="fld"><span class="flbl">Card Number</span>' +
-    '<div class="cin-wrap"><input class="finp" type="text" id="emiCard" placeholder="0000 0000 0000 0000" maxlength="19" oninput="fmtCard(this)">' +
-    '<span class="cbrand">&#x1F4B3;</span></div></div>' +
-    '<div class="fld"><span class="flbl">Select Tenure</span>' +
-    '<div class="emi-grid">' +
-    '<div class="emi-item sel" onclick="selEmiF(this,3)">3 Mo</div>' +
-    '<div class="emi-item" onclick="selEmiF(this,6)">6 Mo</div>' +
-    '<div class="emi-item" onclick="selEmiF(this,9)">9 Mo</div>' +
-    '<div class="emi-item" onclick="selEmiF(this,12)">12 Mo</div>' +
-    '</div></div>' +
-    '<div class="err-box" id="emiErr"></div>' +
-    '<button class="pay-btn" id="payEmiBtn" onclick="payEmi()" ' + btnStyle + '>Pay ' + p + ' via EMI</button></div>';
-
-  if (m === 'PayLater') return '<div class="fb">' +
-    '<div class="pl-box">' +
-    '<div class="pl-ico">&#x23F0;</div>' +
-    '<p>Pay now &amp; settle within 30 days with zero interest.</p>' +
-    '<p class="pl-prov">Available via <strong>Simpl</strong>, <strong>LazyPay</strong>, <strong>ZestMoney</strong></p></div>' +
-    '<div class="err-box" id="plErr"></div>' +
-    '<button class="pay-btn" id="payPlBtn" onclick="payPL()" ' + btnStyle + '>Pay ' + p + ' via Pay Later</button></div>';
-
-  return '<div class="fb"><div class="err-box" id="genErr"></div>' +
-    '<button class="pay-btn" onclick="payGen(\'' + m + '\')" ' + btnStyle + '>Pay ' + p + '</button></div>';
+  return btn;
 }
 
-/* ─────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════
+   PAYMENT PANELS (Right panel)
+═══════════════════════════════════════ */
+function showPanel(key) {
+  var panel = document.getElementById('pmPanel');
+  if (!panel) return;
 
-function togDtl() {
-  var d = document.getElementById('ordDtl');
-  var c = document.getElementById('amtChev');
-  var show = (d.style.display !== 'block');
-  d.style.display = show ? 'block' : 'none';
-  if (c) c.style.transform = show ? 'rotate(180deg)' : '';
-}
+  var html = '';
 
-function togMode(m) {
-  var row = document.getElementById('row-' + m);
-  if (!row) return;
-  var isOpen = row.classList.contains('open');
-  if (activeMd) {
-    var prev = document.getElementById('row-' + activeMd);
-    if (prev) prev.classList.remove('open');
+  switch (key) {
+    case 'upi':        html = buildUpiPanel();        break;
+    case 'debitCard':  html = buildCardPanel('Debit'); break;
+    case 'creditCard': html = buildCardPanel('Credit'); break;
+    case 'netBanking': html = buildNetBankingPanel();  break;
+    case 'wallet':     html = buildWalletPanel();      break;
+    case 'payLater':   html = buildPayLaterPanel();    break;
+    case 'emi':        html = buildEmiPanel();         break;
+    case 'qr':         html = buildQrPanel();          break;
+    default:           html = buildUpiPanel();
   }
-  activeMd = isOpen ? null : m;
-  row.classList.toggle('open', !isOpen);
+
+  panel.innerHTML = html;
+  panel.style.animation = 'none';
+  panel.offsetHeight; /* reflow */
+  panel.style.animation = 'panelIn 0.22s ease-out';
+
+  bindPanelEvents(key);
 }
 
-function handleBack() {
-  if (window.parent !== window) {
-    window.parent.postMessage({ source: 'BankUPG', event: 'payment.dismiss' }, '*');
-  } else {
-    if (window.history.length > 1) window.history.back();
-    else window.close();
-  }
+/* ── UPI Panel ── */
+function buildUpiPanel() {
+  var appCards = UPI_APPS.map(function (a) {
+    return '<button class="app-card" data-appid="' + esc(a.id) + '">' +
+      '<div class="app-logo" style="background:' + esc(a.color) + ';color:' + (a.dark ? '#111' : '#fff') + '">' + esc(a.init) + '</div>' +
+      '<span class="app-name">' + esc(a.name) + '</span>' +
+    '</button>';
+  }).join('');
+
+  return '<p class="panel-title">Pay using UPI</p>' +
+    '<p class="panel-sub">Enter your UPI ID or choose an app</p>' +
+    '<div class="fl-field" id="upiField">' +
+      '<label>UPI ID</label>' +
+      '<div class="fl-inner">' +
+        '<div class="fl-icon">' + ICONS.upi + '</div>' +
+        '<input type="text" class="fl-input" id="upiInput" placeholder="yourname@upi" autocomplete="off" autocapitalize="off" />' +
+        '<div class="fl-valid" id="upiValid" style="display:none">' +
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="divider"><span class="divider-txt">OR</span></div>' +
+    '<p class="app-grid-label">Choose a UPI app</p>' +
+    '<div class="app-grid" id="upiApps">' + appCards + '</div>';
 }
 
-/* ─────────────────────────────────────────────────────── */
+/* ── Card Panel ── */
+function buildCardPanel(type) {
+  var networks = type === 'Credit'
+    ? '<div class="card-net" data-net="visa">VISA</div><div class="card-net" data-net="mc"><span style="color:#EB001B;font-weight:800">M</span><span style="color:#F79E1B;font-weight:800">C</span></div><div class="card-net" data-net="rupay">RuPay</div><div class="card-net" data-net="amex">AMEX</div>'
+    : '<div class="card-net active" data-net="visa">VISA</div><div class="card-net" data-net="mc"><span style="color:#EB001B;font-weight:800">M</span><span style="color:#F79E1B;font-weight:800">C</span></div><div class="card-net active" data-net="rupay">RuPay</div>';
 
-function setLoading(id, on, rst) {
-  var b = document.getElementById(id);
-  if (!b) return;
-  b.disabled = on;
-  if (on)       b.innerHTML = '<span class="spin"></span> Processing\u2026';
-  else if (rst) b.textContent = rst;
+  return '<p class="panel-title">' + type + ' Card</p>' +
+    '<p class="panel-sub">' + (type === 'Debit' ? 'Visa, Mastercard, RuPay debit cards' : 'Visa, Mastercard, Amex, RuPay credit cards') + '</p>' +
+    '<div class="card-networks">' + networks + '</div>' +
+
+    buildFl('cardNumber', 'Card Number', ICONS.debitCard, 'text',  'cc-number', '0000 0000 0000 0000', 19) +
+    buildFl('cardHolder', 'Card Holder Name', ICONS.lock, 'text', 'cc-name',   'Name on card', 80) +
+
+    '<div class="fl-row2">' +
+      buildFl('expiry',  'Expiry Date', null, 'text', 'cc-exp', 'MM / YY', 5) +
+      '<div class="fl-field" id="cvvField">' +
+        '<label>CVV</label>' +
+        '<div class="fl-inner">' +
+          '<div class="fl-icon">' + ICONS.lock + '</div>' +
+          '<input type="password" class="fl-input" id="cvvInput" placeholder="•••" maxlength="4" autocomplete="cc-csc" />' +
+          '<button type="button" class="cvv-toggle" id="cvvToggle">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' +
+          '</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    '<label class="save-card-row">' +
+      '<input type="checkbox" id="saveCard" />' +
+      '<span>Securely save card for future payments</span>' +
+    '</label>';
 }
 
-function showErr(id, msg) {
-  var e = document.getElementById(id);
-  if (e) { e.textContent = msg; e.classList.add('show'); }
-}
-function hideErr(id) {
-  var e = document.getElementById(id);
-  if (e) e.classList.remove('show');
+function buildFl(id, labelTxt, iconSvg, type, autoComplete, placeholder, maxLen) {
+  var icon = iconSvg ? '<div class="fl-icon">' + iconSvg + '</div>' : '';
+  return '<div class="fl-field" id="' + id + 'Field">' +
+    '<label>' + esc(labelTxt) + '</label>' +
+    '<div class="fl-inner">' +
+      icon +
+      '<input type="' + type + '" class="fl-input" id="' + id + 'Input"' +
+        ' placeholder="' + esc(placeholder) + '"' +
+        (maxLen ? ' maxlength="' + maxLen + '"' : '') +
+        (autoComplete ? ' autocomplete="' + autoComplete + '"' : '') +
+      ' />' +
+    '</div>' +
+  '</div>';
 }
 
-async function doPay(payload, btnId, errId, rst) {
-  hideErr(errId);
-  setLoading(btnId, true, null);
-  try {
-    var r = await fetch('/api/checkout/pay', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+/* ── Net Banking Panel ── */
+function buildNetBankingPanel() {
+  var bankCards = BANKS.map(function (b) {
+    return '<button class="app-card" data-bankid="' + esc(b.id) + '">' +
+      '<div class="app-logo" style="background:' + esc(b.color) + '">' + esc(b.name.charAt(0)) + '</div>' +
+      '<span class="app-name">' + esc(b.name) + '</span>' +
+    '</button>';
+  }).join('');
+
+  return '<p class="panel-title">Net Banking</p>' +
+    '<p class="panel-sub">All major Indian banks supported</p>' +
+    '<p class="app-grid-label">Popular Banks</p>' +
+    '<div class="app-grid" id="bankGrid">' + bankCards + '</div>' +
+    '<p class="app-grid-label" style="margin-top:16px">Other Banks</p>' +
+    '<div class="search-wrap">' +
+      '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
+      '<input type="text" class="search-input" id="bankSearch" placeholder="Search bank name..." />' +
+    '</div>';
+}
+
+/* ── Wallet Panel ── */
+function buildWalletPanel() {
+  var cards = WALLETS.map(function (w) {
+    return '<button class="wallet-card" data-wid="' + esc(w.id) + '">' +
+      '<div class="app-logo" style="background:' + esc(w.color) + ';color:' + (w.dark ? '#111' : '#fff') + '">' + esc(w.init) + '</div>' +
+      '<span class="pm-lbl">' + esc(w.name) + '</span>' +
+    '</button>';
+  }).join('');
+
+  return '<p class="panel-title">Wallets</p>' +
+    '<p class="panel-sub">Select your preferred mobile wallet</p>' +
+    '<div class="wallet-grid" id="walletGrid">' + cards + '</div>';
+}
+
+/* ── Pay Later Panel ── */
+function buildPayLaterPanel() {
+  return '<p class="panel-title">Pay Later</p>' +
+    '<p class="panel-sub">Buy now, pay within 30 days. Zero interest on most transactions.</p>' +
+    '<p class="app-grid-label">Available Providers</p>' +
+    '<div class="paylater-row">' +
+      '<span class="pl-badge" style="background:#1A237E">LazyPay</span>' +
+      '<span class="pl-badge" style="background:#F05A22">Simpl</span>' +
+      '<span class="pl-badge" style="background:#00529C">ZestMoney</span>' +
+    '</div>';
+}
+
+/* ── EMI Panel ── */
+function buildEmiPanel() {
+  var tenures = [3,6,9,12,18,24];
+  var btns = tenures.map(function (t) {
+    return '<button class="emi-btn' + (t === selEmiMonths ? ' active' : '') + '" data-months="' + t + '">' + t + 'M</button>';
+  }).join('');
+
+  return '<p class="panel-title">EMI Options</p>' +
+    '<p class="panel-sub">Split into easy monthly instalments.</p>' +
+    '<p class="app-grid-label">Select Tenure</p>' +
+    '<div class="emi-grid">' + btns + '</div>';
+}
+
+/* ── QR Panel ── */
+function buildQrPanel() {
+  return '<div class="qr-panel">' +
+    '<p class="panel-title">Scan &amp; Pay</p>' +
+    '<p class="panel-sub">Use any UPI app to scan and pay instantly</p>' +
+    '<div class="qr-box">' +
+      '<svg width="150" height="150" viewBox="0 0 120 120" fill="none">' +
+        '<rect x="10" y="10" width="35" height="35" rx="4" fill="#111827"/>' +
+        '<rect x="75" y="10" width="35" height="35" rx="4" fill="#111827"/>' +
+        '<rect x="10" y="75" width="35" height="35" rx="4" fill="#111827"/>' +
+        '<rect x="18" y="18" width="19" height="19" rx="2" fill="#fff"/>' +
+        '<rect x="83" y="18" width="19" height="19" rx="2" fill="#fff"/>' +
+        '<rect x="18" y="83" width="19" height="19" rx="2" fill="#fff"/>' +
+        '<rect x="55" y="10" width="10" height="10" rx="1" fill="#111827"/>' +
+        '<rect x="10" y="55" width="10" height="10" rx="1" fill="#111827"/>' +
+        '<rect x="55" y="55" width="10" height="10" rx="2" fill="var(--pc)"/>' +
+        '<rect x="75" y="55" width="10" height="10" rx="1" fill="#111827"/>' +
+        '<rect x="100" y="55" width="10" height="10" rx="1" fill="#111827"/>' +
+        '<rect x="55" y="75" width="10" height="10" rx="1" fill="#111827"/>' +
+        '<rect x="55" y="100" width="10" height="10" rx="1" fill="#111827"/>' +
+      '</svg>' +
+    '</div>' +
+    '<p class="qr-note">QR valid for <strong>10:00</strong> minutes</p>' +
+  '</div>';
+}
+
+/* ═══════════════════════════════════════
+   BIND PANEL EVENTS
+═══════════════════════════════════════ */
+function bindPanelEvents(key) {
+
+  if (key === 'upi') {
+    /* UPI input: floating label */
+    var upiInput = document.getElementById('upiInput');
+    var upiField = document.getElementById('upiField');
+    var upiValid = document.getElementById('upiValid');
+
+    if (upiInput && upiField) {
+      upiInput.addEventListener('input', function () {
+        upiField.classList.toggle('has-value', upiInput.value.length > 0);
+        var valid = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9]+$/.test(upiInput.value);
+        if (upiValid) upiValid.style.display = valid ? 'flex' : 'none';
+      });
+      upiInput.addEventListener('focus', function () { upiField.classList.add('focused'); });
+      upiInput.addEventListener('blur',  function () { upiField.classList.remove('focused'); });
+    }
+
+    /* UPI app selection */
+    document.querySelectorAll('#upiApps .app-card').forEach(function (card) {
+      card.addEventListener('click', function () {
+        document.querySelectorAll('#upiApps .app-card').forEach(function (c) { c.classList.remove('selected'); });
+        card.classList.add('selected');
+        selectedUpiApp = card.dataset.appid;
+        if (upiInput) { upiInput.value = ''; if (upiField) upiField.classList.remove('has-value'); }
+      });
     });
-    var j = await r.json();
-    var d = j.data;
-    if (j.success && d && d.success) {
-      showResult(true, d.paymentId, d.paymentMode, null, d.redirectUrl, d.signature);
+  }
+
+  if (key === 'debitCard' || key === 'creditCard') {
+    /* Card number formatting + network detection */
+    var numInput = document.getElementById('cardNumberInput');
+    var numField = document.getElementById('cardNumberField');
+    if (numInput && numField) {
+      numInput.addEventListener('input', function () {
+        var raw = numInput.value.replace(/\D/g,'').slice(0,16);
+        numInput.value = raw.replace(/(.{4})/g,'$1 ').trim();
+        numField.classList.toggle('has-value', raw.length > 0);
+        detectNetwork(raw);
+      });
+      numInput.addEventListener('focus', function () { numField.classList.add('focused'); });
+      numInput.addEventListener('blur',  function () { numField.classList.remove('focused'); });
+    }
+
+    /* Holder name */
+    bindFloatLabel('cardHolder');
+
+    /* Expiry formatting */
+    var expInput = document.getElementById('expiryInput');
+    var expField = document.getElementById('expiryField');
+    if (expInput && expField) {
+      expInput.addEventListener('input', function () {
+        var raw = expInput.value.replace(/\D/g,'').slice(0,4);
+        if (raw.length >= 3) raw = raw.slice(0,2) + '/' + raw.slice(2);
+        expInput.value = raw;
+        expField.classList.toggle('has-value', raw.length > 0);
+      });
+      expInput.addEventListener('focus', function () { expField.classList.add('focused'); });
+      expInput.addEventListener('blur',  function () { expField.classList.remove('focused'); });
+    }
+
+    /* CVV field */
+    var cvvField = document.getElementById('cvvField');
+    var cvvInput = document.getElementById('cvvInput');
+    if (cvvInput && cvvField) {
+      cvvInput.addEventListener('input', function () {
+        cvvField.classList.toggle('has-value', cvvInput.value.length > 0);
+      });
+      cvvInput.addEventListener('focus', function () { cvvField.classList.add('focused'); });
+      cvvInput.addEventListener('blur',  function () { cvvField.classList.remove('focused'); });
+    }
+
+    /* CVV toggle */
+    var cvvToggle = document.getElementById('cvvToggle');
+    if (cvvToggle && cvvInput) {
+      cvvToggle.addEventListener('click', function () {
+        showCvv = !showCvv;
+        cvvInput.type = showCvv ? 'text' : 'password';
+      });
+    }
+  }
+
+  if (key === 'netBanking') {
+    document.querySelectorAll('#bankGrid .app-card').forEach(function (card) {
+      card.addEventListener('click', function () {
+        document.querySelectorAll('#bankGrid .app-card').forEach(function (c) { c.classList.remove('selected'); });
+        card.classList.add('selected');
+        selectedBank = card.dataset.bankid;
+      });
+    });
+  }
+
+  if (key === 'wallet') {
+    document.querySelectorAll('#walletGrid .wallet-card').forEach(function (card) {
+      card.addEventListener('click', function () {
+        document.querySelectorAll('#walletGrid .wallet-card').forEach(function (c) {
+          c.classList.remove('selected');
+          var chk = c.querySelector('.wallet-check');
+          if (chk) chk.remove();
+        });
+        card.classList.add('selected');
+        selectedWallet = card.dataset.wid;
+        var chk = document.createElement('div');
+        chk.className = 'wallet-check';
+        chk.innerHTML = '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>';
+        card.appendChild(chk);
+      });
+    });
+  }
+
+  if (key === 'emi') {
+    document.querySelectorAll('.emi-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.emi-btn').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        selEmiMonths = parseInt(btn.dataset.months, 10);
+      });
+    });
+  }
+}
+
+function bindFloatLabel(id) {
+  var input = document.getElementById(id + 'Input');
+  var field = document.getElementById(id + 'Field');
+  if (input && field) {
+    input.addEventListener('input', function () { field.classList.toggle('has-value', input.value.length > 0); });
+    input.addEventListener('focus', function () { field.classList.add('focused'); });
+    input.addEventListener('blur',  function () { field.classList.remove('focused'); });
+  }
+}
+
+function detectNetwork(num) {
+  var nets = document.querySelectorAll('.card-net');
+  if (!nets.length) return;
+  nets.forEach(function (n) { n.classList.remove('active'); });
+  if (!num) { nets.forEach(function (n) { n.classList.add('active'); }); return; }
+  if (/^4/.test(num))       document.querySelector('[data-net="visa"]') && document.querySelector('[data-net="visa"]').classList.add('active');
+  else if (/^5[1-5]/.test(num)) document.querySelector('[data-net="mc"]')   && document.querySelector('[data-net="mc"]').classList.add('active');
+  else if (/^3[47]/.test(num))  document.querySelector('[data-net="amex"]') && document.querySelector('[data-net="amex"]').classList.add('active');
+  else                          document.querySelector('[data-net="rupay"]') && document.querySelector('[data-net="rupay"]').classList.add('active');
+}
+
+/* ═══════════════════════════════════════
+   PAYMENT BUTTON — HANDLE PAY
+═══════════════════════════════════════ */
+function handlePay(e) {
+  if (payBtn && (payBtn.classList.contains('loading') || payBtn.classList.contains('success'))) return;
+
+  /* Ripple */
+  if (e && payBtn) {
+    var rect = payBtn.getBoundingClientRect();
+    var rip  = document.createElement('span');
+    rip.className = 'btn-ripple';
+    rip.style.left = (e.clientX - rect.left) + 'px';
+    rip.style.top  = (e.clientY - rect.top)  + 'px';
+    payBtn.appendChild(rip);
+    setTimeout(function () { if (rip.parentNode) rip.parentNode.removeChild(rip); }, 650);
+  }
+
+  /* Build request payload */
+  var payload = buildPayload();
+  if (!payload) return; /* validation failed */
+
+  setBtnLoading();
+
+  /* POST to /api/checkout/pay */
+  fetch('/api/checkout/pay', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(function (res) { return res.json(); })
+  .then(function (data) {
+    if (data && data.success && data.data) {
+      var d = data.data;
+      if (d.requiresRedirect && d.redirectUrl) {
+        window.location.href = d.redirectUrl;
+      } else {
+        onPaymentSuccess(d.paymentId, d.orderId, d.signature, d.amount, d.paidAt);
+      }
     } else {
-      showErr(errId, (d && d.message) || j.message || 'Payment failed. Please try again.');
-      setLoading(btnId, false, rst);
+      onPaymentError(data.message || 'Payment failed. Please try again.');
     }
-  } catch (err) {
-    showErr(errId, 'Network error. Please check your connection and try again.');
-    setLoading(btnId, false, rst);
-  }
+  })
+  .catch(function () {
+    onPaymentError('Network error. Please check your connection and try again.');
+  });
 }
 
-/* ─────────────────────────────────────────────────────── */
-/* Payment handler helpers */
+function buildPayload() {
+  var base = {
+    token:       cfg.token,
+    orderId:     cfg.orderId,
+    paymentMode: activeMethod
+  };
 
-function payCard() {
-  var num = (document.getElementById('cardNum')  || {}).value || '';
-  var nm  = (document.getElementById('cardName') || {}).value || '';
-  var exp = (document.getElementById('cardExp')  || {}).value || '';
-  var cvv = (document.getElementById('cardCvv')  || {}).value || '';
-  num = num.replace(/\s/g, '');
-  if (num.length < 15)      return showErr('cardErr', 'Please enter a valid card number.');
-  if (!nm.trim())           return showErr('cardErr', 'Please enter the name on the card.');
-  if (!/^\d{2}\s*\/\s*\d{2}$/.test(exp)) return showErr('cardErr', 'Please enter expiry as MM/YY.');
-  if (cvv.length < 3)       return showErr('cardErr', 'Please enter a valid CVV.');
-  var p = (cfg.amountSymbol || '') + cfg.amount;
-  doPay({ checkoutToken: cfg.token, paymentMode: 'Card', cardNumber: num, cardName: nm, cardExpiry: exp, cardCvv: cvv },
-        'payCardBtn', 'cardErr', 'Pay ' + p);
-}
-
-function payUpi() {
-  var vpa = ((document.getElementById('upiVpa') || {}).value || '').trim();
-  if (!vpa.includes('@')) return showErr('upiErr', 'Please enter a valid UPI ID (e.g. name@okhdfc).');
-  var p = (cfg.amountSymbol || '') + cfg.amount;
-  doPay({ checkoutToken: cfg.token, paymentMode: 'UPI', upiVpa: vpa }, 'payUpiBtn', 'upiErr', 'Pay ' + p);
-}
-
-function payNb() {
-  var bk = ((document.getElementById('bankCode') || {}).value || '');
-  if (!bk) return showErr('nbErr', 'Please select your bank.');
-  var p = (cfg.amountSymbol || '') + cfg.amount;
-  doPay({ checkoutToken: cfg.token, paymentMode: 'NetBanking', bankCode: bk }, 'payNbBtn', 'nbErr', 'Pay ' + p);
-}
-
-function payWallet(el, nm) {
-  document.querySelectorAll('.w-item').forEach(function (w) { w.classList.remove('sel'); });
-  el.classList.add('sel');
-  doPay({ checkoutToken: cfg.token, paymentMode: 'Wallet', bankCode: nm }, null, 'walletErr', '');
-}
-
-function selEmiF(el, m) {
-  selEmiMonths = m;
-  document.querySelectorAll('.emi-item').forEach(function (e) { e.classList.remove('sel'); });
-  el.classList.add('sel');
-}
-
-function payEmi() {
-  var num = ((document.getElementById('emiCard') || {}).value || '').replace(/\s/g, '');
-  if (num.length < 15) return showErr('emiErr', 'Please enter a valid card number.');
-  var p = (cfg.amountSymbol || '') + cfg.amount + ' via EMI';
-  doPay({ checkoutToken: cfg.token, paymentMode: 'EMI', cardNumber: num, emiTenure: selEmiMonths },
-        'payEmiBtn', 'emiErr', 'Pay ' + p);
-}
-
-function payPL() {
-  var p = (cfg.amountSymbol || '') + cfg.amount + ' via Pay Later';
-  doPay({ checkoutToken: cfg.token, paymentMode: 'PayLater' }, 'payPlBtn', 'plErr', 'Pay ' + p);
-}
-
-function payGen(m) {
-  doPay({ checkoutToken: cfg.token, paymentMode: m }, null, 'genErr', '');
-}
-
-/* ─────────────────────────────────────────────────────── */
-/* Card formatting helpers */
-
-function fmtCard(inp) {
-  var v = inp.value.replace(/\D/g, '').slice(0, 16);
-  inp.value = v.replace(/(.{4})/g, '$1 ').trim();
-  var brand = document.getElementById('cbrand');
-  if (brand) {
-    var t = v.charAt(0);
-    brand.textContent = t === '4' ? 'VISA' : (t === '5' ? 'MC' : (t === '6' ? 'RuPay' : ''));
-  }
-}
-
-function fmtExp(inp) {
-  var v = inp.value.replace(/\D/g, '').slice(0, 4);
-  inp.value = v.length > 2 ? v.slice(0,2) + ' / ' + v.slice(2) : v;
-}
-
-/* ─────────────────────────────────────────────────────── */
-
-/**
- * showResult — Razorpay-style result overlay.
- *
- * Success flow:
- *  1. Show green success overlay immediately (with animated tick).
- *  2. Send payment.success postMessage to parent RIGHT AWAY so the
- *     merchant's handler() can run server-side verification without
- *     waiting for the countdown.
- *  3. Show a "Closing in N seconds…" countdown (Razorpay-style).
- *  4. After countdown: send payment.close_ok → SDK closes the modal.
- *
- * Failure flow:
- *  Show white error overlay with retry button (no auto-close).
- */
-function showResult(ok, pid, mode, msg, rdUrl, sig) {
-  var ol  = document.getElementById('optList');
-  var lbl = document.querySelector('.opt-label');
-  var hdr = document.querySelector('.pg-hdr');
-  var ov  = document.getElementById('resOv');
-
-  if (ol)  ol.style.display  = 'none';
-  if (lbl) lbl.style.display = 'none';
-  if (hdr) hdr.style.display = 'none';
-  if (ov)  {
-    ov.style.display = 'flex';
-    if (ok) ov.classList.add('success-ov');
-    else    ov.classList.remove('success-ov');
-  }
-
-  var ico  = document.getElementById('resIco');
-  var ttl  = document.getElementById('resTtl');
-  var amt  = document.getElementById('resAmt');
-  var sub  = document.getElementById('resSub');
-  var idEl = document.getElementById('resId');
-  var cd   = document.getElementById('resCountdown');
-  var rtry = document.getElementById('retryBtn');
-
-  /* Tick / X — force class reassignment to re-trigger CSS animation */
-  if (ico) {
-    ico.className = '';
-    void ico.offsetWidth; /* reflow to restart animation */
-    ico.className = 'res-ico ' + (ok ? 'ok' : 'fail');
-    ico.textContent = ok ? '\u2713' : '\u2715';
-  }
-
-  if (ttl) ttl.textContent = ok ? 'Payment Successful!' : 'Payment Failed';
-
-  /* Amount uses textContent; C# now sends ₹ as a real Unicode char */
-  if (amt) {
-    amt.textContent = ok ? ((cfg && cfg.amountSymbol || '') + (cfg && cfg.amount || '')) : '';
-  }
-
-  if (sub) sub.textContent = ok
-    ? ('Paid via ' + (mode || 'UPI'))
-    : (msg || 'Your payment could not be processed. Please try again.');
-
-  if (idEl) {
-    idEl.style.display = (ok && pid) ? 'block' : 'none';
-    if (ok && pid) idEl.textContent = 'Payment ID: ' + pid;
-  }
-
-  if (rtry) rtry.style.display = ok ? 'none' : 'inline-block';
-  if (cd)   cd.textContent = '';
-
-  if (ok) {
-    /* Step 1 — Notify parent of success immediately (merchant handler fires) */
-    var successMsg = {
-      source:       'BankUPG',
-      event:        'payment.success',
-      payment_id:   pid,
-      order_id:     cfg ? cfg.orderId : '',
-      signature:    sig,
-      amount:       cfg ? cfg.amount  : '',
-      payment_mode: mode,
-      paid_at:      new Date().toISOString()
-    };
-    if (window.parent !== window) {
-      window.parent.postMessage(successMsg, '*');
+  if (activeMethod === 'upi') {
+    var upiInput = document.getElementById('upiInput');
+    var upiId    = upiInput ? upiInput.value.trim() : '';
+    if (!upiId && !selectedUpiApp) {
+      shakePanel(); return null;
     }
+    base.upiId  = upiId || null;
+    base.upiApp = selectedUpiApp || null;
+  }
 
-    /* Step 2 — Countdown, then send close_ok (Razorpay-style "Closing in N…") */
-    var secs = 4;
-    if (cd) cd.textContent = 'Closing in ' + secs + ' seconds\u2026';
+  if (activeMethod === 'debitCard' || activeMethod === 'creditCard') {
+    var num  = (document.getElementById('cardNumberInput') || {}).value || '';
+    var name = (document.getElementById('cardHolderInput') || {}).value || '';
+    var exp  = (document.getElementById('expiryInput')    || {}).value || '';
+    var cvv  = (document.getElementById('cvvInput')        || {}).value || '';
+    if (!num.replace(/\s/g,'') || !name || !exp || !cvv) { shakePanel(); return null; }
+    base.cardNumber  = num.replace(/\s/g,'');
+    base.cardHolder  = name;
+    base.expiryDate  = exp;
+    base.cvv         = cvv;
+    base.saveCard    = !!((document.getElementById('saveCard') || {}).checked);
+  }
 
-    var timer = setInterval(function () {
-      secs--;
-      if (cd) {
-        if (secs > 0) cd.textContent = 'Closing in ' + secs + ' second' + (secs > 1 ? 's' : '') + '\u2026';
-        else          cd.textContent = 'Closing\u2026';
-      }
-      if (secs <= 0) {
-        clearInterval(timer);
-        if (window.parent !== window) {
-          /* Tell SDK to close the modal now */
-          window.parent.postMessage({ source: 'BankUPG', event: 'payment.close_ok' }, '*');
-        } else {
-          /* Standalone page — redirect or close tab */
-          if (rdUrl) window.location.href = rdUrl;
-          else window.close();
-        }
-      }
-    }, 1000);
+  if (activeMethod === 'netBanking') {
+    var bankSearch = (document.getElementById('bankSearch') || {}).value || '';
+    base.bankCode = selectedBank || bankSearch || null;
+    if (!base.bankCode) { shakePanel(); return null; }
+  }
+
+  if (activeMethod === 'wallet') {
+    base.walletProvider = selectedWallet;
+    if (!base.walletProvider) { shakePanel(); return null; }
+  }
+
+  if (activeMethod === 'emi') {
+    base.emiMonths = selEmiMonths;
+  }
+
+  return base;
+}
+
+function shakePanel() {
+  var panel = document.getElementById('pmPanel');
+  if (!panel) return;
+  panel.style.animation = 'none';
+  panel.offsetHeight;
+  panel.style.animation = 'shake 0.35s ease-out';
+}
+
+/* ── Button state helpers ── */
+function setBtnLoading() {
+  if (!payBtn) return;
+  payBtn.disabled = true;
+  payBtn.classList.add('loading');
+  payBtn.innerHTML =
+    '<div class="btn-spinner"></div>' +
+    '<span class="btn-lbl">Processing…</span>';
+}
+
+function setBtnSuccess() {
+  if (!payBtn) return;
+  payBtn.classList.remove('loading');
+  payBtn.classList.add('success');
+  payBtn.innerHTML =
+    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>' +
+    '<span class="btn-lbl">Payment Successful!</span>';
+}
+
+function resetPayBtn() {
+  if (!payBtn) return;
+  payBtn.disabled = false;
+  payBtn.className = 'ck-pay-btn';
+  payBtn.innerHTML =
+    '<span class="btn-lock">' + ICONS.lock + '</span>' +
+    '<span class="btn-lbl">Pay ' + esc(amountStr) + '</span>';
+}
+
+/* ═══════════════════════════════════════
+   SUCCESS / ERROR OVERLAYS
+═══════════════════════════════════════ */
+function onPaymentSuccess(paymentId, orderId, signature, amount, paidAt) {
+  setBtnSuccess();
+
+  /* Notify parent immediately */
+  window.parent.postMessage({
+    source:       'BankUPG',
+    event:        'payment.success',
+    payment_id:   paymentId,
+    order_id:     orderId,
+    signature:    signature,
+    amount:       amount,
+    payment_mode: activeMethod,
+    paid_at:      paidAt
+  }, '*');
+
+  /* Show success overlay with countdown */
+  var sym = cfg.amountSymbol || '₹';
+  var amt = cfg.amount || '0.00';
+
+  var ov = document.getElementById('ckResult');
+  if (!ov) return;
+  ov.className = 'ck-result-ov success-bg';
+  ov.style.display = 'flex';
+  ov.innerHTML =
+    '<div class="res-icon">' +
+      '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>' +
+    '</div>' +
+    '<div class="res-title">Payment Successful</div>' +
+    '<div class="res-amount">' + esc(sym + amt) + '</div>' +
+    '<div class="res-sub">Paid to ' + esc(cfg.merchantName || 'BankU') + '</div>' +
+    '<div class="res-id">ID: ' + esc(paymentId || '') + '</div>' +
+    '<div class="res-countdown" id="resCountdown">Closing in 5s…</div>';
+
+  /* Countdown and close */
+  var secs = 5;
+  var timer = setInterval(function () {
+    secs--;
+    var cd = document.getElementById('resCountdown');
+    if (cd) cd.textContent = secs > 0 ? 'Closing in ' + secs + 's…' : 'Closing…';
+    if (secs <= 0) {
+      clearInterval(timer);
+      window.parent.postMessage({ source: 'BankUPG', event: 'payment.close_ok' }, '*');
+    }
+  }, 1000);
+}
+
+function onPaymentError(msg) {
+  if (payBtn) {
+    payBtn.disabled = false;
+    payBtn.classList.remove('loading');
+    payBtn.classList.add('error');
+    payBtn.innerHTML =
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>' +
+      '<span class="btn-lbl">Try Again</span>';
+    payBtn.removeEventListener('click', handlePay);
+    payBtn.addEventListener('click', function () {
+      resetPayBtn();
+      payBtn.addEventListener('click', handlePay);
+    });
+  }
+
+  var ov = document.getElementById('ckResult');
+  if (!ov) return;
+  ov.className = 'ck-result-ov error-bg';
+  ov.style.display = 'flex';
+  ov.innerHTML =
+    '<div class="res-icon">' +
+      '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>' +
+    '</div>' +
+    '<div class="res-title">Payment Failed</div>' +
+    '<div class="res-sub">' + esc(msg) + '</div>' +
+    '<button class="res-retry-btn" id="retryBtn">Try Another Method</button>';
+
+  var retryBtn = document.getElementById('retryBtn');
+  if (retryBtn) {
+    retryBtn.addEventListener('click', function () {
+      ov.style.display = 'none';
+      resetPayBtn();
+    });
   }
 }
 
-/* ─────────────────────────────────────────────────────── */
+/* ── Panel entrance animation ── */
+(function addStyles() {
+  var s = document.createElement('style');
+  s.textContent =
+    '@keyframes panelIn { from { opacity:0; transform:translateX(6px); } to { opacity:1; transform:translateX(0); } }' +
+    '@keyframes shake   { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }';
+  document.head.appendChild(s);
+})();
 
-window.addEventListener('DOMContentLoaded', init);
+/* ── Boot ── */
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}

@@ -134,6 +134,7 @@ namespace BankUPG.API.Controllers
         // CHECKOUT PAGE (served to customer browser – no auth needed)
         // ─────────────────────────────────────────────────────────────────────────
 
+ 
         /// <summary>
         /// Step 2: Customer opens the hosted checkout page.
         /// </summary>
@@ -204,8 +205,8 @@ namespace BankUPG.API.Controllers
                 orderRef = session.OrderRef,
                 merchantName = session.MerchantName ?? "BankUPG",
                 logoUrl = session.MerchantLogoUrl ?? "",
-                primaryColor = session.PrimaryColor ?? "#009688",
-                secondaryColor = session.SecondaryColor ?? "#7c3aed",
+                primaryColor = session.PrimaryColor ?? "#2563EB",
+                secondaryColor = session.SecondaryColor ?? "#7C3AED",
                 customerName = session.CustomerName ?? "",
                 customerEmail = session.CustomerEmail ?? "",
                 customerPhone = session.CustomerPhone ?? "",
@@ -225,12 +226,113 @@ namespace BankUPG.API.Controllers
 <html lang='en'>
 <head>
 <meta charset='UTF-8'>
-<meta name='viewport' content='width=device-width, initial-scale=1.0'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0'>
 <title>__PAGE_TITLE__</title>
-<link rel='stylesheet' href='/checkout-page.css?v=5'>
+<link rel='preconnect' href='https://fonts.googleapis.com'>
+<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap' rel='stylesheet'>
+<link rel='stylesheet' href='/checkout-page.css?v=6'>
 </head>
 <body>
-<div class='pg-wrap'>
+
+<div class='ck-wrap' id='ckWrap'>
+
+  <!-- ── HEADER ── -->
+  <header class='ck-header'>
+    <div class='ck-merchant'>
+      <div id='logoWrap'></div>
+      <div class='ck-merchant-info'>
+        <div class='ck-merchant-name' id='mName'></div>
+        <div class='ck-merchant-sub'>
+          <span class='ck-verified-badge'>
+            <svg width='10' height='10' viewBox='0 0 24 24' fill='none'>
+              <path d='M20 6L9 17l-5-5' stroke='#22C55E' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/>
+            </svg>
+          </span>
+          Secure Payment
+        </div>
+      </div>
+    </div>
+    <button class='ck-close' id='closeBtn' title='Close payment'>
+      <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round'>
+        <line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/>
+      </svg>
+    </button>
+  </header>
+
+  <!-- ── AMOUNT ── -->
+  <div class='ck-amount-section'>
+    <div class='ck-amount-val' id='amtVal'></div>
+    <div class='ck-amount-meta'>
+      <span class='ck-paying-lbl'>Paying to</span>
+      <span class='ck-paying-to' id='payingTo'></span>
+      <svg width='12' height='12' viewBox='0 0 24 24' fill='none' style='flex-shrink:0'>
+        <path d='M12 2l2.4 4.8 5.3.8-3.8 3.7.9 5.3L12 14.1l-4.8 2.5.9-5.3L4.3 7.6l5.3-.8z' fill='var(--pc)' stroke='var(--pc)' stroke-width='1' stroke-linejoin='round'/>
+      </svg>
+      <span class='ck-instant-badge'>Instant payment</span>
+    </div>
+  </div>
+
+  <!-- ── SPLIT BODY ── -->
+  <div class='ck-body'>
+    <div class='ck-left' id='pmList'></div>
+    <div class='ck-right' id='pmPanel'></div>
+  </div>
+
+  <!-- ── BOTTOM: SECURITY + PAY BUTTON + FOOTER ── -->
+  <div class='ck-bottom'>
+
+    <div class='ck-security'>
+      <div class='sec-badge'>
+        <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round'>
+          <path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/>
+        </svg>
+        256-bit SSL
+      </div>
+      <div class='sec-dot'></div>
+      <div class='sec-badge'>
+        <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round'>
+          <polyline points='9 11 12 14 22 4'/>
+          <path d='M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11'/>
+        </svg>
+        PCI DSS
+      </div>
+      <div class='sec-dot'></div>
+      <div class='sec-badge'>
+        <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round'>
+          <path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/>
+          <path d='M9 12l2 2 4-4'/>
+        </svg>
+        100% Secure
+      </div>
+    </div>
+
+    <div class='ck-pay-wrap'>
+      <button class='ck-pay-btn' id='payBtn'></button>
+    </div>
+
+    <footer class='ck-footer'>
+      <div class='ck-pow'>
+        <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round'>
+          <rect x='3' y='11' width='18' height='11' rx='2'/><path d='M7 11V7a5 5 0 0110 0v4'/>
+        </svg>
+        Powered by
+        <span class='ck-pow-brand'>BankU</span>
+      </div>
+      <div class='ck-foot-links'>
+        <a href='#' class='ck-foot-link'>Privacy</a>
+        <span class='ck-foot-sep'>·</span>
+        <a href='#' class='ck-foot-link'>Terms</a>
+        <span class='ck-foot-sep'>·</span>
+        <a href='#' class='ck-foot-link'>Support</a>
+      </div>
+    </footer>
+
+  </div>
+
+</div>
+
+<!-- Result overlay (success / error — populated by JS) -->
+<div id='ckResult' style='display:none'></div>
 
   <!-- ── LEFT PANEL (desktop branding strip) ── -->
   <div class='pg-left'>
@@ -306,8 +408,7 @@ namespace BankUPG.API.Controllers
 </div>
 <!-- Config injected by server — parsed by checkout-page.js, never executed -->
 <script type='application/json' id='cfg-data'>__CHECKOUT_CONFIG__</script>
-<script src='/checkout-page.js?v=5'></script>
-<!-- all JS served from /checkout-page.js -->
+<script src='/checkout-page.js?v=6'></script>
 <!-- REMOVEME_START
 function init() {
   if (!cfg) {
