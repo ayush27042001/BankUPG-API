@@ -3,13 +3,12 @@ using BankUPG.SharedKernal.Requests;
 using BankUPG.SharedKernal.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace BankUPG.API.Controllers
 {
     [ApiController]
     [Route("api/merchant-payment-methods")]
-    [Authorize(Roles = "SuperAdmin")]
+    [Authorize]
     [Produces("application/json")]
     public class MerchantPaymentMethodController : ControllerBase
     {
@@ -23,6 +22,7 @@ namespace BankUPG.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "SuperAdmin")]
         public async Task<ActionResult<ApiResponse<MerchantPaymentMethodResponse>>> Create([FromBody] CreateMerchantPaymentMethodRequest request)
         {
             if (!ModelState.IsValid)
@@ -41,6 +41,7 @@ namespace BankUPG.API.Controllers
         }
 
         [HttpPut("{merchantPaymentMethodId:int}")]
+        [Authorize(Roles = "SuperAdmin")]
         public async Task<ActionResult<ApiResponse<MerchantPaymentMethodResponse>>> Update(int merchantPaymentMethodId, [FromBody] UpdateMerchantPaymentMethodRequest request)
         {
             if (merchantPaymentMethodId != request.MerchantPaymentMethodId)
@@ -52,6 +53,7 @@ namespace BankUPG.API.Controllers
         }
 
         [HttpGet("{merchantPaymentMethodId:int}")]
+        [Authorize(Roles = "SuperAdmin")]
         public async Task<ActionResult<ApiResponse<MerchantPaymentMethodResponse>>> Get(int merchantPaymentMethodId)
         {
             var result = await _service.GetAsync(merchantPaymentMethodId);
@@ -67,6 +69,7 @@ namespace BankUPG.API.Controllers
         }
 
         [HttpDelete("{merchantPaymentMethodId:int}")]
+        [Authorize(Roles = "SuperAdmin")]
         public async Task<ActionResult<ApiResponse>> Delete(int merchantPaymentMethodId)
         {
             var success = await _service.DeleteAsync(merchantPaymentMethodId);
