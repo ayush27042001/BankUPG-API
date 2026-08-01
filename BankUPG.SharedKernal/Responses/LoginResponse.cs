@@ -9,6 +9,7 @@ namespace BankUPG.SharedKernal.Responses
         public bool IsMobileVerified { get; set; }
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
+        public int? Mid { get; set; }
 
         // Refresh token for token renewal
         public string? RefreshToken { get; set; }

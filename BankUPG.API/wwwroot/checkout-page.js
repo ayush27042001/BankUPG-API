@@ -670,11 +670,22 @@ function handlePay(e) {
   });
 }
 
+/* ── Payment mode key  →  API PaymentMode value ── */
+var MODE_MAP = {
+  upi:        'UPI',
+  card:       'Card',
+  debitCard:  'Card',
+  creditCard: 'Card',
+  netBanking: 'NetBanking',
+  wallet:     'Wallet',
+  emi:        'EMI',
+  payLater:   'PayLater'
+};
+
 function buildPayload() {
   var base = {
-    token:       cfg.token,
-    orderId:     cfg.orderId,
-    paymentMode: activeMethod
+    checkoutToken: cfg.token,                         /* required by /api/checkout/pay */
+    paymentMode:   MODE_MAP[activeMethod] || activeMethod
   };
 
   if (activeMethod === 'upi') {
@@ -683,8 +694,8 @@ function buildPayload() {
     if (!upiId && !selectedUpiApp) {
       shakePanel(); return null;
     }
-    base.upiId  = upiId || null;
-    base.upiApp = selectedUpiApp || null;
+    /* API field: upiVpa */
+    base.upiVpa = upiId || (selectedUpiApp ? selectedUpiApp + '@upi' : null);
   }
 
   if (activeMethod === 'card' || activeMethod === 'debitCard' || activeMethod === 'creditCard') {
@@ -693,12 +704,11 @@ function buildPayload() {
     var exp  = (document.getElementById('expiryInput')    || {}).value || '';
     var cvv  = (document.getElementById('cvvInput')        || {}).value || '';
     if (!num.replace(/\s/g,'') || !name || !exp || !cvv) { shakePanel(); return null; }
-    base.cardNumber  = num.replace(/\s/g,'');
-    base.cardHolder  = name;
-    base.expiryDate  = exp;
-    base.cvv         = cvv;
-    base.paymentMode = 'Card';
-    base.saveCard    = !!((document.getElementById('saveCard') || {}).checked);
+    /* API fields: cardNumber, cardName, cardExpiry, cardCvv */
+    base.cardNumber = num.replace(/\s/g,'');
+    base.cardName   = name;
+    base.cardExpiry = exp.replace(/\s/g,'');  /* normalise "MM / YY" → "MM/YY" */
+    base.cardCvv    = cvv;
   }
 
   if (activeMethod === 'netBanking') {
@@ -708,12 +718,15 @@ function buildPayload() {
   }
 
   if (activeMethod === 'wallet') {
-    base.walletProvider = selectedWallet;
-    if (!base.walletProvider) { shakePanel(); return null; }
+    /* API field: bankCode (reused for wallet provider) */
+    base.bankCode = selectedWallet;
+    if (!base.bankCode) { shakePanel(); return null; }
   }
 
   if (activeMethod === 'emi') {
-    base.emiMonths = selEmiMonths;
+    var emiNum = (document.getElementById('emiCardInput') || {}).value || '';
+    base.cardNumber = emiNum.replace(/\s/g,'');
+    if (!base.cardNumber) { shakePanel(); return null; }
   }
 
   return base;
@@ -755,89 +768,168 @@ function resetPayBtn() {
     '<span class="btn-lbl">Pay ' + esc(amountStr) + '</span>';
 }
 
-/* ═══════════════════════════════════════
-   SUCCESS / ERROR OVERLAYS
-═══════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════
+   RESULT BOTTOM SHEET  — modern slide-up card with animated
+   SVG check / cross and circular countdown ring
+═══════════════════════════════════════════════════════════ */
+
+/* SVG ring circumference for r = 22: 2π × 22 ≈ 138.23 */
+var RING_C = 138.23;
+
+function removeResultSheet() {
+  var old = document.getElementById('ckResultSheet');
+  if (old) old.remove();
+}
+
+/* ── shared helper: human-readable mode label ── */
+function modeLabel(key) {
+  var map = { UPI:'UPI', Card:'Card', NetBanking:'Net Banking',
+              Wallet:'Wallet', EMI:'EMI', PayLater:'Pay Later' };
+  return map[key] || key || '—';
+}
+
+/* ══════════ SUCCESS ══════════ */
 function onPaymentSuccess(paymentId, orderId, signature, amount, paidAt) {
   setBtnSuccess();
 
-  /* Notify parent immediately */
+  /* ① Notify parent window immediately via postMessage */
+  var modeKey = MODE_MAP[activeMethod] || activeMethod;
   window.parent.postMessage({
     source:       'BankUPG',
     event:        'payment.success',
     payment_id:   paymentId,
     order_id:     orderId,
     signature:    signature,
-    amount:       amount,
-    payment_mode: activeMethod,
-    paid_at:      paidAt
+    amount:       String(amount || cfg.amount || ''),
+    payment_mode: modeKey,
+    paid_at:      paidAt || new Date().toISOString()
   }, '*');
 
-  /* Show success overlay with countdown */
-  var sym = cfg.amountSymbol || '₹';
-  var amt = cfg.amount || '0.00';
+  /* ② Build bottom sheet */
+  removeResultSheet();
+  var sym   = cfg.amountSymbol || '₹';
+  var amtStr = String(typeof amount === 'number' ? amount.toFixed(2) : (amount || cfg.amount || '0.00'));
+  var sheet = document.createElement('div');
+  sheet.id        = 'ckResultSheet';
+  sheet.className = 'crs-sheet crs-sheet-success';
 
-  var ov = document.getElementById('ckResult');
-  if (!ov) return;
-  ov.className = 'ck-result-ov success-bg';
-  ov.style.display = 'flex';
-  ov.innerHTML =
-    '<div class="res-icon">' +
-      '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>' +
+  sheet.innerHTML =
+    /* ── backdrop strip (gradient) ── */
+    '<div class="crs-top">' +
+      /* animated check SVG */
+      '<div class="crs-icon-circle crs-success-circle">' +
+        '<svg class="crs-svg-check" viewBox="0 0 52 52">' +
+          '<circle class="crs-circle-stroke" cx="26" cy="26" r="24" fill="none" stroke-width="2.5"/>' +
+          '<path  class="crs-check-mark"  fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" d="M14 27 23 36 38 18"/>' +
+        '</svg>' +
+      '</div>' +
+      '<p class="crs-heading">Payment Successful!</p>' +
+      '<p class="crs-amount">' + esc(sym + amtStr) + '</p>' +
     '</div>' +
-    '<div class="res-title">Payment Successful</div>' +
-    '<div class="res-amount">' + esc(sym + amt) + '</div>' +
-    '<div class="res-sub">Paid to ' + esc(cfg.merchantName || 'BankU') + '</div>' +
-    '<div class="res-id">ID: ' + esc(paymentId || '') + '</div>' +
-    '<div class="res-countdown" id="resCountdown">Closing in 5s…</div>';
 
-  /* Countdown and close */
+    /* ── details card ── */
+    '<div class="crs-body">' +
+      '<div class="crs-meta">' +
+        '<div class="crs-meta-row"><span>Paid to</span><strong>' + esc(cfg.merchantName || 'BankU') + '</strong></div>' +
+        '<div class="crs-meta-row"><span>Order ID</span><code>'   + esc(orderId    || '—') + '</code></div>' +
+        '<div class="crs-meta-row"><span>Payment ID</span><code>' + esc(paymentId  || '—') + '</code></div>' +
+        '<div class="crs-meta-row"><span>Method</span><strong>'   + esc(modeLabel(modeKey))  + '</strong></div>' +
+      '</div>' +
+
+      /* countdown ring + label */
+      '<div class="crs-countdown-wrap">' +
+        '<div class="crs-ring-wrap">' +
+          '<svg class="crs-ring-svg" viewBox="0 0 52 52">' +
+            '<circle class="crs-ring-bg"   cx="26" cy="26" r="22" fill="none" stroke-width="3.5"/>' +
+            '<circle class="crs-ring-fill" cx="26" cy="26" r="22" fill="none" stroke-width="3.5"' +
+              ' stroke-dasharray="' + RING_C + '" stroke-dashoffset="0" id="crsRing"/>' +
+          '</svg>' +
+          '<span class="crs-ring-num" id="crsRingNum">5</span>' +
+        '</div>' +
+        '<p class="crs-redirect-txt">Redirecting in <span id="crsRedirSecs">5</span>s…</p>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(sheet);
+
+  /* ③ Tick countdown — ring drains from full to empty over 5 s */
   var secs = 5;
-  var timer = setInterval(function () {
+  function tick() {
     secs--;
-    var cd = document.getElementById('resCountdown');
-    if (cd) cd.textContent = secs > 0 ? 'Closing in ' + secs + 's…' : 'Closing…';
+    var numEl  = document.getElementById('crsRingNum');
+    var secsEl = document.getElementById('crsRedirSecs');
+    var ring   = document.getElementById('crsRing');
+    if (numEl)  numEl.textContent  = Math.max(0, secs);
+    if (secsEl) secsEl.textContent = Math.max(0, secs);
+    /* dashoffset goes from 0 (full) to RING_C (empty) */
+    if (ring)   ring.style.strokeDashoffset = String((RING_C * (5 - secs) / 5).toFixed(2));
     if (secs <= 0) {
-      clearInterval(timer);
+      if (numEl) numEl.textContent = '✓';
       window.parent.postMessage({ source: 'BankUPG', event: 'payment.close_ok' }, '*');
+    } else {
+      setTimeout(tick, 1000);
     }
-  }, 1000);
+  }
+  setTimeout(tick, 1000);
 }
 
+/* ══════════ ERROR ══════════ */
 function onPaymentError(msg) {
+  /* Reset pay button to "Try Again" state */
   if (payBtn) {
     payBtn.disabled = false;
     payBtn.classList.remove('loading');
-    payBtn.classList.add('error');
     payBtn.innerHTML =
-      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>' +
-      '<span class="btn-lbl">Try Again</span>';
-    payBtn.removeEventListener('click', handlePay);
-    payBtn.addEventListener('click', function () {
+      ICONS.close +
+      '<span class="btn-lbl">Payment Failed — Tap to Retry</span>';
+    payBtn.className = 'ck-pay-btn error';
+    /* One-shot click restores normal state */
+    payBtn.addEventListener('click', function onRetap() {
+      payBtn.removeEventListener('click', onRetap);
       resetPayBtn();
-      payBtn.addEventListener('click', handlePay);
-    });
+      removeResultSheet();
+    }, { once: true });
   }
 
-  var ov = document.getElementById('ckResult');
-  if (!ov) return;
-  ov.className = 'ck-result-ov error-bg';
-  ov.style.display = 'flex';
-  ov.innerHTML =
-    '<div class="res-icon">' +
-      '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>' +
+  removeResultSheet();
+  var sheet = document.createElement('div');
+  sheet.id        = 'ckResultSheet';
+  sheet.className = 'crs-sheet crs-sheet-error';
+
+  sheet.innerHTML =
+    '<div class="crs-top crs-top-error">' +
+      '<div class="crs-icon-circle crs-error-circle">' +
+        '<svg class="crs-svg-cross" viewBox="0 0 52 52">' +
+          '<circle class="crs-circle-stroke crs-circle-red" cx="26" cy="26" r="24" fill="none" stroke-width="2.5"/>' +
+          '<path class="crs-cross-line1" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" d="M17 17 35 35"/>' +
+          '<path class="crs-cross-line2" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" d="M35 17 17 35"/>' +
+        '</svg>' +
+      '</div>' +
+      '<p class="crs-heading">Payment Failed</p>' +
+      '<p class="crs-err-msg">' + esc(msg) + '</p>' +
     '</div>' +
-    '<div class="res-title">Payment Failed</div>' +
-    '<div class="res-sub">' + esc(msg) + '</div>' +
-    '<button class="res-retry-btn" id="retryBtn">Try Another Method</button>';
 
-  var retryBtn = document.getElementById('retryBtn');
-  if (retryBtn) {
-    retryBtn.addEventListener('click', function () {
-      ov.style.display = 'none';
-      resetPayBtn();
-    });
-  }
+    '<div class="crs-body crs-body-error">' +
+      '<div class="crs-err-actions">' +
+        '<button class="crs-btn-retry" id="crsRetryBtn">' +
+          '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>' +
+          ' Try Another Method' +
+        '</button>' +
+        '<button class="crs-btn-close" id="crsCloseBtn">Close</button>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(sheet);
+
+  var retryBtn = document.getElementById('crsRetryBtn');
+  var closeBtn = document.getElementById('crsCloseBtn');
+  if (retryBtn) retryBtn.addEventListener('click', function () {
+    removeResultSheet();
+    resetPayBtn();
+  });
+  if (closeBtn) closeBtn.addEventListener('click', function () {
+    window.parent.postMessage({ source: 'BankUPG', event: 'payment.dismiss' }, '*');
+  });
 }
 
 /* ── Panel entrance animation ── */

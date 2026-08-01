@@ -152,6 +152,7 @@ namespace BankUPG.API.Controllers
                     IsMobileVerified = user.IsMobileVerified ?? false,
                     FirstName = user.Email, // Using email as first name for now
                     LastName = string.Empty,
+                    Mid = mid,
                     RefreshToken = refreshToken,
                     RefreshTokenExpiration = refreshTokenExpiration,
                     OnboardingStatusId = step, // 0-based step number
@@ -317,6 +318,7 @@ namespace BankUPG.API.Controllers
                     IsMobileVerified = true,
                     FirstName = user.Email,
                     LastName = string.Empty,
+                    Mid = mid,
                     OnboardingStatusId = step,
                     CurrentStepName = currentStepName,
                     FormStep = formStep,
