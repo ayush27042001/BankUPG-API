@@ -37,7 +37,7 @@
         var style = document.createElement('style');
         style.id = 'bankupg-styles';
         style.textContent = [
-            '#bankupg-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99998;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);}',
+            '#bankupg-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99998;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:16px;}',
             '#bankupg-modal{width:100%;max-width:860px;height:90vh;max-height:680px;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 32px 80px rgba(0,0,0,0.3);border:none;z-index:99999;display:flex;flex-direction:column;}',
             '#bankupg-frame{flex:1;border:none;width:100%;height:100%;}',
             '#bankupg-close{position:absolute;top:16px;right:16px;width:32px;height:32px;background:rgba(255,255,255,0.9);border:none;border-radius:50%;cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.15);z-index:100000;}',
@@ -46,6 +46,7 @@
             '#bankupg-modal.bankupg-slide-in{animation:modalIn 0.25s cubic-bezier(0.34,1.56,0.64,1);}',
             '@keyframes bgFadeIn{from{opacity:0}to{opacity:1}}',
             '@keyframes modalIn{from{opacity:0;transform:scale(0.92) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}',
+            '@media(max-width:768px){#bankupg-overlay{padding:0;}#bankupg-modal{max-height:92vh;border-radius:12px;}}',
             '@media(max-width:600px){#bankupg-modal{height:100vh;max-height:100vh;border-radius:0;max-width:100%;}}'
         ].join('');
         document.head.appendChild(style);

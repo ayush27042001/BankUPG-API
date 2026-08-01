@@ -81,21 +81,17 @@ var ICONS = {
   chev:       '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'
 };
 
-/* ── Payment method metadata ── */
+/* ── Payment method metadata ──
+   Keys here must match exactly the PaymentMethodType values in the DB.
+   Only modes listed in cfg.modes (from MerchantPaymentMethods) are shown. ── */
 var PM_META = {
   UPI:        { key:'upi',        lbl:'UPI',         sub:'GPay, PhonePe, Paytm & more',  icon:'upi' },
-  Card:       { key:'debitCard',  lbl:'Debit Card',   sub:'Visa, Mastercard, RuPay',       icon:'debitCard' },
+  Card:       { key:'card',       lbl:'Card',         sub:'Debit & Credit Cards',          icon:'debitCard' },
   NetBanking: { key:'netBanking', lbl:'Net Banking',  sub:'All major banks',               icon:'netBanking' },
   Wallet:     { key:'wallet',     lbl:'Wallets',      sub:'Paytm, PhonePe, MobiKwik',      icon:'wallet' },
   EMI:        { key:'emi',        lbl:'EMI',          sub:'Easy monthly instalments',      icon:'emi' },
   PayLater:   { key:'payLater',   lbl:'Pay Later',    sub:'Buy now, pay within 30 days',   icon:'payLater' }
 };
-
-/* Extra items appended regardless of cfg.modes */
-var EXTRA_METHODS = [
-  { key:'creditCard', lbl:'Credit Card', sub:'Visa, Mastercard, Amex', icon:'creditCard' },
-  { key:'qr',         lbl:'QR Code',     sub:'Scan with any UPI app',  icon:'qr' }
-];
 
 /* UPI apps */
 var UPI_APPS = [
@@ -248,17 +244,15 @@ function buildMethodList() {
       }
     });
   } else {
-    /* Fallback: show all */
+    /* Fallback: show all when no modes configured */
     Object.keys(PM_META).forEach(function (k) {
       var m = PM_META[k];
       if (!seen[m.key]) { methods.push(m); seen[m.key] = true; }
     });
   }
 
-  /* Append extra (credit card + QR) if not already present */
-  EXTRA_METHODS.forEach(function (m) {
-    if (!seen[m.key]) { methods.push(m); seen[m.key] = true; }
-  });
+  /* Set first available method as active */
+  if (methods.length > 0) activeMethod = methods[0].key;
 
   methods.forEach(function (m) {
     inner.appendChild(buildMethodItem(m));
@@ -303,12 +297,13 @@ function showPanel(key) {
   var html = '';
 
   switch (key) {
-    case 'upi':        html = buildUpiPanel();        break;
-    case 'debitCard':  html = buildCardPanel('Debit'); break;
-    case 'creditCard': html = buildCardPanel('Credit'); break;
-    case 'netBanking': html = buildNetBankingPanel();  break;
-    case 'wallet':     html = buildWalletPanel();      break;
-    case 'payLater':   html = buildPayLaterPanel();    break;
+    case 'upi':        html = buildUpiPanel();       break;
+    case 'card':       html = buildCardPanel();      break;
+    case 'debitCard':  html = buildCardPanel();      break;
+    case 'creditCard': html = buildCardPanel();      break;
+    case 'netBanking': html = buildNetBankingPanel(); break;
+    case 'wallet':     html = buildWalletPanel();    break;
+    case 'payLater':   html = buildPayLaterPanel();  break;
     case 'emi':        html = buildEmiPanel();         break;
     case 'qr':         html = buildQrPanel();          break;
     default:           html = buildUpiPanel();
@@ -349,13 +344,15 @@ function buildUpiPanel() {
 }
 
 /* ── Card Panel ── */
-function buildCardPanel(type) {
-  var networks = type === 'Credit'
-    ? '<div class="card-net" data-net="visa">VISA</div><div class="card-net" data-net="mc"><span style="color:#EB001B;font-weight:800">M</span><span style="color:#F79E1B;font-weight:800">C</span></div><div class="card-net" data-net="rupay">RuPay</div><div class="card-net" data-net="amex">AMEX</div>'
-    : '<div class="card-net active" data-net="visa">VISA</div><div class="card-net" data-net="mc"><span style="color:#EB001B;font-weight:800">M</span><span style="color:#F79E1B;font-weight:800">C</span></div><div class="card-net active" data-net="rupay">RuPay</div>';
+function buildCardPanel() {
+  var networks =
+    '<div class="card-net active" data-net="visa">VISA</div>' +
+    '<div class="card-net" data-net="mc"><span style="color:#EB001B;font-weight:800">M</span><span style="color:#F79E1B;font-weight:800">C</span></div>' +
+    '<div class="card-net" data-net="rupay">RuPay</div>' +
+    '<div class="card-net" data-net="amex">AMEX</div>';
 
-  return '<p class="panel-title">' + type + ' Card</p>' +
-    '<p class="panel-sub">' + (type === 'Debit' ? 'Visa, Mastercard, RuPay debit cards' : 'Visa, Mastercard, Amex, RuPay credit cards') + '</p>' +
+  return '<p class="panel-title">Pay by Card</p>' +
+    '<p class="panel-sub">Debit & Credit cards — Visa, Mastercard, RuPay, Amex</p>' +
     '<div class="card-networks">' + networks + '</div>' +
 
     buildFl('cardNumber', 'Card Number', ICONS.debitCard, 'text',  'cc-number', '0000 0000 0000 0000', 19) +
@@ -513,7 +510,7 @@ function bindPanelEvents(key) {
     });
   }
 
-  if (key === 'debitCard' || key === 'creditCard') {
+  if (key === 'card' || key === 'debitCard' || key === 'creditCard') {
     /* Card number formatting + network detection */
     var numInput = document.getElementById('cardNumberInput');
     var numField = document.getElementById('cardNumberField');
@@ -690,7 +687,7 @@ function buildPayload() {
     base.upiApp = selectedUpiApp || null;
   }
 
-  if (activeMethod === 'debitCard' || activeMethod === 'creditCard') {
+  if (activeMethod === 'card' || activeMethod === 'debitCard' || activeMethod === 'creditCard') {
     var num  = (document.getElementById('cardNumberInput') || {}).value || '';
     var name = (document.getElementById('cardHolderInput') || {}).value || '';
     var exp  = (document.getElementById('expiryInput')    || {}).value || '';
@@ -700,6 +697,7 @@ function buildPayload() {
     base.cardHolder  = name;
     base.expiryDate  = exp;
     base.cvv         = cvv;
+    base.paymentMode = 'Card';
     base.saveCard    = !!((document.getElementById('saveCard') || {}).checked);
   }
 

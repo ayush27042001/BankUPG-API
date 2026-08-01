@@ -333,6 +333,9 @@ body {
   transition: all 0.2s;
 }
 
+/* Hidden on desktop — only shown on mobile horizontal scroll */
+.pm-mobile-lbl { display: none; }
+
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    PAYMENT PANEL — COMMON
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -419,7 +422,11 @@ body {
   padding-top: 14px;
 }
 
-.fl-input::placeholder { color: var(--muted); font-weight: 400; font-size: 13px; }
+/* Placeholder hidden by default so it doesn't overlap the floating label.
+   Revealed only once the label has floated to the top (focused or has-value). */
+.fl-input::placeholder { color: transparent; }
+.fl-field:focus-within .fl-input::placeholder,
+.fl-field.has-value .fl-input::placeholder { color: var(--muted); font-weight: 400; font-size: 13px; }
 
 .fl-valid {
   width: 22px;
@@ -1135,8 +1142,22 @@ body {
   .fl-row2 { grid-template-columns: 1fr 1fr; }
 }
 
+/* ── Narrow viewport: 480px ─────────────────────────
+   Modal shows at < 600px but the modal itself may be
+   460–580 px wide on medium phones. */
+@media (max-width: 480px) {
+  .ck-amount-val { font-size: 28px; }
+  .ck-left { padding: 6px 4px; }
+  .pm-list-inner { gap: 4px; padding: 0 4px 6px; }
+  .pm-item { min-width: 60px; padding: 9px 4px; }
+  .app-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .ck-security { gap: 6px; }
+  .sec-badge { font-size: 9px; padding: 4px 8px; }
+}
+
 @media (max-width: 380px) {
   .ck-right { padding: 12px 10px; }
   .fl-row2 { grid-template-columns: 1fr 1fr; gap: 8px; }
   .ck-security { flex-wrap: wrap; }
+  .ck-amount-val { font-size: 24px; }
 }
