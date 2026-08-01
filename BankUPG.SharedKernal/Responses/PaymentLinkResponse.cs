@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json.Serialization;
 
 namespace BankUPG.SharedKernal.Responses
 {
@@ -8,7 +9,6 @@ namespace BankUPG.SharedKernal.Responses
         public DateTime? CreatedOn => CreatedDate;
         public long PaymentLinkId { get; set; }
         public string? PurposeOfPayment => Purpose ?? Description;
-        public string? InvoiceID => InvoiceId;
         public decimal? Amount { get; set; }
         public string? PaymentLink => ShortUrl;
         public string? PaymentType { get; set; }
@@ -26,6 +26,7 @@ namespace BankUPG.SharedKernal.Responses
         public DateTime? DueDate { get; set; }
         public string? ShortUrl { get; set; }
         public string? ReferenceId { get; set; }
+        [JsonPropertyName("invoiceID")]
         public string? InvoiceId { get; set; }
         public string? AmountType { get; set; }
         public bool? IsPartialPayment { get; set; }
